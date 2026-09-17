@@ -57,11 +57,11 @@ public partial class PaletteWindow : Window
         else ShowPalette();
     }
 
-    public void ShowPalette()
+    public async void ShowPalette()
     {
         if (OperatingSystem.IsWindows())
             _lastForeground = NativeMethods.GetForegroundWindow();
-        _core.LastTarget = TryReadClipboard();
+        _core.LastTarget = await SelectedTextCapture.CaptureAsync(Clipboard);
         _core.Mode = "root";
         _core.Query = "";
         Show();
@@ -80,15 +80,6 @@ public partial class PaletteWindow : Window
         Hide();
         if (OperatingSystem.IsWindows() && _lastForeground != nint.Zero)
             NativeMethods.SetForegroundWindow(_lastForeground);
-    }
-
-    string? TryReadClipboard()
-    {
-        try
-        {
-            return Clipboard?.GetTextAsync().GetAwaiter().GetResult();
-        }
-        catch { return null; }
     }
 
     async void OnKeyDown(object? sender, KeyEventArgs e)
@@ -126,7 +117,8 @@ public partial class PaletteWindow : Window
         }
         if (e.Key == Key.K && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
-            _core.OpenSettings();
+            _core.ShowActions();
+            FocusComposer();
             e.Handled = true;
             return;
         }
@@ -150,6 +142,20 @@ public partial class PaletteWindow : Window
         FocusComposer();
     }
     void OnSettings(object? sender, RoutedEventArgs e) => _core.OpenSettings();
+    void OnActions(object? sender, RoutedEventArgs e)
+    {
+        _core.ShowActions();
+        FocusComposer();
+    }
+
+    async void OnQuickActionRetry(object? sender, RoutedEventArgs e) =>
+        await _core.RetryQuickActionAsync();
+
+    async void OnQuickActionCopy(object? sender, RoutedEventArgs e) =>
+        await _core.CopyQuickActionAsync(Clipboard);
+
+    async void OnQuickActionReplace(object? sender, RoutedEventArgs e) =>
+        await _core.ReplaceQuickActionAsync(Clipboard);
 
     public void ShowHud(string message)
     {
@@ -168,7 +174,7 @@ public partial class PaletteWindow : Window
     public void AskConfirm(string id)
     {
         _pendingAction = id;
-        ConfirmTitle.Text = id.Replace('-', ' ') + "?";
+        ConfirmTitle.Text = _core.ConfirmationTitle(id);
         Confirm.IsVisible = true;
         Show();
     }
@@ -226,4 +232,31 @@ public sealed class NotAiConverter : IValueConverter
     public static readonly NotAiConverter Instance = new();
     public object Convert(object? value, Type t, object? p, CultureInfo c) => value is not "ai";
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
+}
+
+public sealed class ShowsPaletteListConverter : IValueConverter
+{
+    public static readonly ShowsPaletteListConverter Instance = new();
+    public object Convert(object? value, Type t, object? p, CultureInfo c) =>
+        value is not "ai" and not "quickActionResult";
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) =>
+        throw new NotSupportedException();
+}
+
+public sealed class ShowsSearchBoxConverter : IValueConverter
+{
+    public static readonly ShowsSearchBoxConverter Instance = new();
+    public object Convert(object? value, Type t, object? p, CultureInfo c) =>
+        value is not "ai" and not "quickActionResult";
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) =>
+        throw new NotSupportedException();
+}
+
+public sealed class IsQuickActionResultConverter : IValueConverter
+{
+    public static readonly IsQuickActionResultConverter Instance = new();
+    public object Convert(object? value, Type t, object? p, CultureInfo c) =>
+        value is "quickActionResult";
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) =>
+        throw new NotSupportedException();
 }

@@ -58,6 +58,35 @@ public class CalculatorTests
     [Fact]
     public void Letters_only_is_not_math() =>
         Assert.Null(Calculator.Evaluate("firefox"));
+
+    [Theory]
+    [InlineData("20% of 50", "10")]
+    [InlineData("100 + 15%", "115")]
+    [InlineData("100 - 15%", "85")]
+    [InlineData("sqrt(81)", "9")]
+    [InlineData("2^8", "256")]
+    public void Advanced_math(string expression, string expected) =>
+        Assert.Equal(expected, Calculator.Evaluate(expression)!.Value.CopyText);
+
+    [Theory]
+    [InlineData("1 GB to MB", "1,000 MB")]
+    [InlineData("60 mph to kph", "96.56064 kph")]
+    [InlineData("1 acre to m2", "4,046.856422 m2")]
+    [InlineData("90 deg to rad", "1.570796 rad")]
+    public void Expanded_conversions(string expression, string expected) =>
+        Assert.Equal(expected, Calculator.Evaluate(expression)!.Value.Display);
+
+    [Fact]
+    public void Currency_uses_injected_usd_rates()
+    {
+        var rates = new Dictionary<string, double>
+        {
+            ["USD"] = 1,
+            ["EUR"] = 0.8,
+            ["GBP"] = 0.5
+        };
+        Assert.Equal("62.5 GBP", Calculator.Evaluate("100 EUR to GBP", rates)!.Value.Display);
+    }
 }
 
 public class WindowPlacementTests

@@ -49,6 +49,7 @@ static class AppPaths
     public static string Notes => Path.Combine(Root, "notes.json");
     public static string Clipboard => Path.Combine(Root, "clipboard.json");
     public static string Secret => Path.Combine(Root, "mistral.key");
+    public static string CurrencyRates => Path.Combine(Root, "currency-rates.json");
 }
 
 static class SecretStore

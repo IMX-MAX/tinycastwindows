@@ -14,6 +14,9 @@ public enum EntryKind
     Window,
     Calculator,
     AiChat,
+    QuickAction,
+    CustomCommand,
+    Action,
     Favorite
 }
 
@@ -28,4 +31,6 @@ public sealed record PaletteEntry(
     string? IconPath = null)
 {
     public bool HasIcon => !string.IsNullOrWhiteSpace(IconPath);
+    public bool IsCalculator => Kind == EntryKind.Calculator;
+    public bool IsRegular => !IsCalculator;
 }

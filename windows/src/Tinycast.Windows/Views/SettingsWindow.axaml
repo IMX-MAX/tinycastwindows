@@ -14,9 +14,12 @@
         <TextBlock Text="Tinycast" FontSize="18" Margin="8,8,8,16" />
         <Button Classes="Frost" HorizontalAlignment="Stretch" Content="General" Click="ShowGeneral" />
         <Button Classes="Frost" HorizontalAlignment="Stretch" Content="AI · Mistral" Click="ShowAiClicked" />
+        <Button Classes="Frost" HorizontalAlignment="Stretch" Content="Quick Actions" Click="ShowQuickActions" />
+        <Button Classes="Frost" HorizontalAlignment="Stretch" Content="Custom Commands" Click="ShowCustomCommands" />
         <Button Classes="Frost" HorizontalAlignment="Stretch" Content="Quicklinks" Click="ShowQuicklinks" />
         <Button Classes="Frost" HorizontalAlignment="Stretch" Content="Snippets" Click="ShowSnippets" />
         <Button Classes="Frost" HorizontalAlignment="Stretch" Content="File Search" Click="ShowFiles" />
+        <Button Classes="Frost" HorizontalAlignment="Stretch" Content="Backup &amp; Restore" Click="ShowBackupClicked" />
       </StackPanel>
     </Border>
     <ScrollViewer Grid.Column="1" Padding="28">

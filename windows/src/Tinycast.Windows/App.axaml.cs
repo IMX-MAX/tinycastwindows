@@ -30,9 +30,12 @@ public partial class App : Application
             core.HideRequested += () => Dispatcher.UIThread.Post(() => _palette.Dismiss());
             core.SettingsRequested += () => Dispatcher.UIThread.Post(ShowSettings);
             core.AiSettingsRequested += () => Dispatcher.UIThread.Post(ShowAiSettings);
+            core.BackupSettingsRequested += () => Dispatcher.UIThread.Post(ShowBackupSettings);
             core.NoteRequested += note => Dispatcher.UIThread.Post(() => new NoteWindow(core, note).Show());
             core.HudRequested += message => Dispatcher.UIThread.Post(() => _palette.ShowHud(message));
             core.ConfirmRequested += id => Dispatcher.UIThread.Post(() => _palette.AskConfirm(id));
+            core.CommandOutputRequested += result => Dispatcher.UIThread.Post(
+                () => new CommandOutputWindow(result).Show());
 
             _hotkeys = new HotKeyListener();
             var gesture = HotKeyGesture.TryParse(core.Settings.Hotkey, out var saved)
@@ -82,6 +85,12 @@ public partial class App : Application
     {
         ShowSettings();
         _settings?.ShowAiPane();
+    }
+
+    void ShowBackupSettings()
+    {
+        ShowSettings();
+        _settings?.ShowBackupPane();
     }
 
 }
