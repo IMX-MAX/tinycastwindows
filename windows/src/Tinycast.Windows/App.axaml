@@ -1,0 +1,66 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:Tinycast.Windows"
+             x:Class="Tinycast.Windows.App"
+             x:DataType="local:TrayCommands"
+             RequestedThemeVariant="Dark">
+  <Application.Resources>
+    <Color x:Key="Ink">#E6FFFFFF</Color>
+    <Color x:Key="InkMuted">#73FFFFFF</Color>
+    <Color x:Key="RowHover">#14FFFFFF</Color>
+    <Color x:Key="RowSelected">#24FFFFFF</Color>
+    <Color x:Key="Brand">#863BFF</Color>
+    <SolidColorBrush x:Key="InkBrush" Color="{StaticResource Ink}" />
+    <SolidColorBrush x:Key="InkMutedBrush" Color="{StaticResource InkMuted}" />
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme />
+    <Style Selector="TextBox.Search">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="CaretBrush" Value="White" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="Margin" Value="8,1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#14FFFFFF" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="#24FFFFFF" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+    <Style Selector="Button.Frost">
+      <Setter Property="Background" Value="#18FFFFFF" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="14,8" />
+    </Style>
+    <Style Selector="Button.Frost:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#28FFFFFF" />
+    </Style>
+  </Application.Styles>
+  <TrayIcon.Icons>
+    <TrayIcons>
+      <TrayIcon ToolTipText="Tinycast"
+                Command="{Binding TogglePaletteCommand}"
+                Icon="avares://Tinycast/Assets/tinycast.ico">
+        <TrayIcon.Menu>
+          <NativeMenu>
+            <NativeMenuItem Header="Show Palette" Command="{Binding TogglePaletteCommand}" />
+            <NativeMenuItem Header="Settings" Command="{Binding OpenSettingsCommand}" />
+            <NativeMenuItemSeparator />
+            <NativeMenuItem Header="Quit Tinycast" Command="{Binding QuitCommand}" />
+          </NativeMenu>
+        </TrayIcon.Menu>
+      </TrayIcon>
+    </TrayIcons>
+  </TrayIcon.Icons>
+</Application>

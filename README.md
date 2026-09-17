@@ -101,6 +101,18 @@ run. Downloading a DMG from [Releases](https://github.com/abue-ammar/tinycast/re
 Tinycast is self-signed, so clear the flag once:
 `xattr -dr com.apple.quarantine "/Applications/Tinycast.app"`.
 
+### Windows
+
+A separate Avalonia port lives in [`windows/`](windows/README.md). It uses **Windows Acrylic** instead
+of Liquid Glass and **Mistral** for every AI feature. Build the installer (self-contained `win-x64`):
+
+```sh
+./windows/Scripts/build-installer.sh
+```
+
+Run `windows/dist/TinycastSetup.exe` on Windows 10/11. `Alt+Space` summons the palette. Paste a
+Mistral API key under Settings → AI.
+
 ## Permissions
 
 **Accessibility** — needed when Tinycast pastes or expands text into another app, and the only

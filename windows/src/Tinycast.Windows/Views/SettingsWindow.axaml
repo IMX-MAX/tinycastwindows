@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Tinycast.Windows"
+        x:Class="Tinycast.Windows.SettingsWindow"
+        Title="Tinycast Settings"
+        Width="900" Height="700"
+        WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="Mica,AcrylicBlur,Blur"
+        Background="#E6101010"
+        ExtendClientAreaToDecorationsHint="True">
+  <Grid ColumnDefinitions="215,*" Margin="0,32,0,0">
+    <Border Background="#0AFFFFFF" Padding="12">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Tinycast" FontSize="18" Margin="8,8,8,16" />
+        <Button Classes="Frost" HorizontalAlignment="Stretch" Content="General" Click="ShowGeneral" />
+        <Button Classes="Frost" HorizontalAlignment="Stretch" Content="AI · Mistral" Click="ShowAi" />
+        <Button Classes="Frost" HorizontalAlignment="Stretch" Content="Quicklinks" Click="ShowQuicklinks" />
+        <Button Classes="Frost" HorizontalAlignment="Stretch" Content="Snippets" Click="ShowSnippets" />
+        <Button Classes="Frost" HorizontalAlignment="Stretch" Content="File Search" Click="ShowFiles" />
+      </StackPanel>
+    </Border>
+    <ScrollViewer Grid.Column="1" Padding="28">
+      <StackPanel Name="Pane" Spacing="16" />
+    </ScrollViewer>
+  </Grid>
+</Window>
