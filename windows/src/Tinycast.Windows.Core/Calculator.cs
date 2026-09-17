@@ -44,12 +44,17 @@ public static class Calculator
         ["px"] = ("px", 1),
     };
 
-    public static CalcResult? Evaluate(string raw, IReadOnlyDictionary<string, double>? usdRates = null)
+    public static CalcResult? Evaluate(
+        string raw,
+        IReadOnlyDictionary<string, double>? usdRates = null,
+        DateTimeOffset? now = null)
     {
         var query = raw.Trim();
         if (query.Length is 0 or > 256) return null;
+        if (TryDateTime(query, now ?? DateTimeOffset.Now, out var dateTime)) return dateTime;
         if (query.All(char.IsLetter)) return null;
 
+        if (TryBaseConversion(query, out var baseConversion)) return baseConversion;
         if (TryRadix(query, out var radix)) return radix;
         if (TryPercent(query, out var percent)) return percent;
         if (TryConversion(query, usdRates, out var converted)) return converted;
@@ -91,6 +96,86 @@ public static class Calculator
             return true;
         }
         return false;
+    }
+
+    static readonly Regex BaseConversion = new(
+        @"^\s*(0x[0-9a-f]+|0b[01]+|\d+)\s+(?:to|in)\s+(hex|binary|bin|octal|oct|decimal|dec)\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    static bool TryBaseConversion(string query, out CalcResult result)
+    {
+        result = default;
+        var match = BaseConversion.Match(query);
+        if (!match.Success) return false;
+        var source = match.Groups[1].Value;
+        long value;
+        try
+        {
+            value = source.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                ? Convert.ToInt64(source[2..], 16)
+                : source.StartsWith("0b", StringComparison.OrdinalIgnoreCase)
+                    ? Convert.ToInt64(source[2..], 2)
+                    : Convert.ToInt64(source, 10);
+        }
+        catch
+        {
+            return false;
+        }
+
+        var target = match.Groups[2].Value.ToLowerInvariant();
+        var copy = target switch
+        {
+            "hex" => "0x" + Convert.ToString(value, 16),
+            "binary" or "bin" => "0b" + Convert.ToString(value, 2),
+            "octal" or "oct" => "0o" + Convert.ToString(value, 8),
+            _ => value.ToString(CultureInfo.InvariantCulture)
+        };
+        result = new CalcResult(query, copy, copy, false);
+        return true;
+    }
+
+    static readonly Regex DateOffset = new(
+        @"^\s*(today|now)\s*([+-])\s*(\d+)\s*(minute|hour|day|week)s?\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    static bool TryDateTime(string query, DateTimeOffset now, out CalcResult result)
+    {
+        result = default;
+        if (query.Equals("now", StringComparison.OrdinalIgnoreCase))
+        {
+            var text = now.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.CurrentCulture);
+            result = new CalcResult(query, text, text, false);
+            return true;
+        }
+        if (query.Equals("today", StringComparison.OrdinalIgnoreCase))
+        {
+            var text = now.ToString("dddd, MMMM d, yyyy", CultureInfo.CurrentCulture);
+            result = new CalcResult(query, text, now.ToString("yyyy-MM-dd"), false);
+            return true;
+        }
+
+        var match = DateOffset.Match(query);
+        if (!match.Success) return false;
+        var value = int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture);
+        if (match.Groups[2].Value == "-") value = -value;
+        var shifted = match.Groups[4].Value.ToLowerInvariant() switch
+        {
+            "minute" => now.AddMinutes(value),
+            "hour" => now.AddHours(value),
+            "day" => now.AddDays(value),
+            "week" => now.AddDays(value * 7),
+            _ => now
+        };
+        if (match.Groups[1].Value.Equals("today", StringComparison.OrdinalIgnoreCase))
+            shifted = new DateTimeOffset(shifted.Date, shifted.Offset);
+        var display = shifted.ToString(
+            match.Groups[4].Value.StartsWith("minute", StringComparison.OrdinalIgnoreCase)
+            || match.Groups[4].Value.StartsWith("hour", StringComparison.OrdinalIgnoreCase)
+                ? "ddd, MMM d, yyyy HH:mm"
+                : "dddd, MMMM d, yyyy",
+            CultureInfo.CurrentCulture);
+        result = new CalcResult(query, display, shifted.ToString("yyyy-MM-dd HH:mm"), false);
+        return true;
     }
 
     static readonly Regex Conversion = new(

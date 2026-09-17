@@ -55,7 +55,8 @@ static class BackupService
         core.Settings.FileSearchRoots = data.FileSearchRoots;
         core.Settings.QuickActions = data.QuickActions;
         core.Settings.CalculatorHistory = data.CalculatorHistory;
-        core.Settings.CustomCommands = data.CustomCommands;
+        core.Settings.CustomCommands =
+            data.CustomCommands.Select(command => command.SafeImportedCopy()).ToList();
         core.Settings.Ranking = data.Ranking;
         Replace(core.Quicklinks, data.Quicklinks);
         Merge(core.Snippets, data.Snippets, item => item.Name + "\n" + item.Body);

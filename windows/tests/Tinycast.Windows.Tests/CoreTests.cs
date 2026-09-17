@@ -87,6 +87,25 @@ public class CalculatorTests
         };
         Assert.Equal("62.5 GBP", Calculator.Evaluate("100 EUR to GBP", rates)!.Value.Display);
     }
+
+    [Theory]
+    [InlineData("255 to hex", "0xff")]
+    [InlineData("0xff to bin", "0b11111111")]
+    [InlineData("64 to oct", "0o100")]
+    public void Number_base_conversions(string expression, string expected) =>
+        Assert.Equal(expected, Calculator.Evaluate(expression)!.Value.CopyText);
+
+    [Fact]
+    public void Date_arithmetic_uses_injected_now()
+    {
+        var now = new DateTimeOffset(2026, 9, 17, 10, 30, 0, TimeSpan.Zero);
+        Assert.Equal(
+            "2026-09-20 00:00",
+            Calculator.Evaluate("today + 3 days", now: now)!.Value.CopyText);
+        Assert.Equal(
+            "2026-09-17 12:30",
+            Calculator.Evaluate("now + 2 hours", now: now)!.Value.CopyText);
+    }
 }
 
 public class WindowPlacementTests
@@ -134,6 +153,14 @@ public class PlaceholderTests
     {
         var text = PlaceholderExpander.Expand("https://example.com/{query}?c={clipboard}", "hello world", "clip");
         Assert.Equal("https://example.com/hello world?c=clip", text);
+    }
+
+    [Fact]
+    public void Url_expansion_percent_encodes_values()
+    {
+        var text = PlaceholderExpander.ExpandUrl(
+            "https://example.com/?q={query}&c={clipboard}", "hello world", "a&b");
+        Assert.Equal("https://example.com/?q=hello%20world&c=a%26b", text);
     }
 }
 
@@ -187,5 +214,24 @@ public class MistralTests
             [new ChatMessage { Role = "user", Content = "Hi" }],
             "sys");
         Assert.Equal(2, messages.Count);
+    }
+}
+
+public class BackupImportPolicyTests
+{
+    [Fact]
+    public void Imported_commands_are_disabled_and_confirmed()
+    {
+        var imported = new CustomCommand
+        {
+            Name = "Danger",
+            Command = "format c:",
+            Enabled = true,
+            ConfirmBeforeRunning = false
+        }.SafeImportedCopy();
+
+        Assert.False(imported.Enabled);
+        Assert.True(imported.ConfirmBeforeRunning);
+        Assert.Equal("format c:", imported.Command);
     }
 }

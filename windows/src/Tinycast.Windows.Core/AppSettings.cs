@@ -58,6 +58,17 @@ public sealed class CustomCommand
     public bool Enabled { get; set; } = true;
     public bool ShowOutput { get; set; }
     public string WorkingDirectory { get; set; } = "";
+
+    public CustomCommand SafeImportedCopy() => new()
+    {
+        Id = Id,
+        Name = Name,
+        Command = Command,
+        WorkingDirectory = WorkingDirectory,
+        ShowOutput = ShowOutput,
+        ConfirmBeforeRunning = true,
+        Enabled = false
+    };
 }
 
 public sealed class Quicklink
@@ -122,6 +133,21 @@ public static class PlaceholderExpander
             .Replace("{date}", now.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase)
             .Replace("{time}", now.ToString("HH:mm"), StringComparison.OrdinalIgnoreCase)
             .Replace("{datetime}", now.ToString("yyyy-MM-dd HH:mm"), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static string ExpandUrl(string template, string query = "", string clipboard = "")
+    {
+        var now = DateTime.Now;
+        return template
+            .Replace("{query}", Uri.EscapeDataString(query), StringComparison.OrdinalIgnoreCase)
+            .Replace(
+                "{clipboard}", Uri.EscapeDataString(clipboard),
+                StringComparison.OrdinalIgnoreCase)
+            .Replace("{date}", now.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase)
+            .Replace("{time}", Uri.EscapeDataString(now.ToString("HH:mm")), StringComparison.OrdinalIgnoreCase)
+            .Replace(
+                "{datetime}", Uri.EscapeDataString(now.ToString("yyyy-MM-dd HH:mm")),
+                StringComparison.OrdinalIgnoreCase);
     }
 }
 

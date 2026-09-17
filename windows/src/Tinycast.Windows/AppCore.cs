@@ -598,7 +598,7 @@ public sealed class AppCore : INotifyPropertyChanged
 
     void OpenQuicklink(Quicklink link)
     {
-        var target = PlaceholderExpander.Expand(link.Target, Query, LastTarget ?? "");
+        var target = PlaceholderExpander.ExpandUrl(link.Target, Query, LastTarget ?? "");
         try
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(target) { UseShellExecute = true });
