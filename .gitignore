@@ -23,9 +23,9 @@ buildServer.json
 .swiftpm/
 .build/
 
-# Build output
-build/
-dist/
+# Build output (repo root only — windows/dist holds the downloadable installer)
+/build/
+/dist/
 
 # Fastlane
 fastlane/report.xml

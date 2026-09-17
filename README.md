@@ -104,21 +104,12 @@ Tinycast is self-signed, so clear the flag once:
 ### Windows
 
 A separate Avalonia port lives in [`windows/`](windows/README.md). It uses **Windows Acrylic** instead
-of Liquid Glass and **Mistral** for every AI feature. Build the installer (self-contained `win-x64`):
+of Liquid Glass and **Mistral** for every AI feature.
 
-```sh
-./windows/Scripts/build-installer.sh
-```
+Download **[TinycastSetup.exe](windows/dist/TinycastSetup.exe)** (Windows 10/11, 64-bit) and run it.
+`Alt+Space` summons the palette. Paste a Mistral API key under Settings → AI.
 
-Run `windows/dist/TinycastSetup.exe` on Windows 10/11. `Alt+Space` summons the
-palette. Paste a Mistral API key under Settings → AI.
-
-A built installer is committed at [`windows/dist/TinycastSetup.exe`](windows/dist/TinycastSetup.exe)
-(SHA-256 in the adjacent `.sha256` file). Rebuild anytime with:
-
-```sh
-./windows/Scripts/build-installer.sh
-```
+Rebuild with `./windows/Scripts/build-installer.sh` (needs the .NET 8 SDK and NSIS).
 
 ## Permissions
 
