@@ -58,6 +58,7 @@ public sealed class AppCore : INotifyPropertyChanged
     public event Action? PaletteRequested;
     public event Action? SettingsRequested;
     public event Action? AiSettingsRequested;
+    public event Action? QuickActionSettingsRequested;
     public event Action? BackupSettingsRequested;
     public event Action<Note>? NoteRequested;
     public event Action? HideRequested;
@@ -322,7 +323,8 @@ public sealed class AppCore : INotifyPropertyChanged
                 var calculation = (CalcResult)entry.Payload!;
                 RecordCalculation(calculation);
                 HidePalette();
-                await Paster.PasteTextAsync(clipboard, calculation.CopyText);
+                if (clipboard is not null)
+                    await clipboard.SetTextAsync(calculation.CopyText);
                 break;
             case EntryKind.Window:
                 HidePalette();
@@ -350,10 +352,16 @@ public sealed class AppCore : INotifyPropertyChanged
 
     async Task RunCommandAsync(string id, Avalonia.Input.Platform.IClipboard? clipboard)
     {
-        if (!Settings.AiEnabled && (id == "cmd:ai" || id == "cmd:quick-actions"))
+        if (!Settings.AiEnabled && id == "cmd:ai")
         {
             HidePalette();
             AiSettingsRequested?.Invoke();
+            return;
+        }
+        if (!Settings.QuickActionsEnabled && id == "cmd:quick-actions")
+        {
+            HidePalette();
+            QuickActionSettingsRequested?.Invoke();
             return;
         }
 
@@ -435,6 +443,11 @@ public sealed class AppCore : INotifyPropertyChanged
             Notify("Select text in another app before opening Tinycast");
             return;
         }
+        if (!QuickActionPrompt.Admits(text))
+        {
+            Notify("The selection is larger than Quick Actions' 32 KB limit");
+            return;
+        }
 
         _activeQuickAction = action;
         QuickActionInput = text;
@@ -442,11 +455,29 @@ public sealed class AppCore : INotifyPropertyChanged
         Mode = "quickActionResult";
         Status = "Mistral is writing…";
         IsStreaming = true;
+        _aiCts?.Cancel();
+        _aiCts = new CancellationTokenSource();
         try
         {
-            QuickActionOutput = await QuickActionAsync(action.Instruction, text);
+            var key = SecretStore.LoadMistralKey() ?? "";
+            var prompt = QuickActionPrompt.Message(action.Instruction, text);
+            var messages = new[]
+            {
+                new ChatMessage { Role = "user", Content = prompt }
+            };
+            await foreach (var token in _mistral.StreamChatAsync(
+                key,
+                Settings.MistralBaseUrl,
+                Settings.QuickActionModel,
+                messages,
+                QuickActionPrompt.SystemInstructions,
+                _aiCts.Token))
+            {
+                QuickActionOutput += token;
+            }
             Status = action.Name;
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             QuickActionOutput = ex.Message;
@@ -665,13 +696,6 @@ public sealed class AppCore : INotifyPropertyChanged
         {
             IsStreaming = false;
         }
-    }
-
-    public async Task<string> QuickActionAsync(string instruction, string selectedText)
-    {
-        var key = SecretStore.LoadMistralKey() ?? "";
-        var prompt = instruction + "\n\n" + selectedText;
-        return await _mistral.CompleteAsync(key, Settings.MistralBaseUrl, Settings.MistralModel, prompt);
     }
 
     public void StopChat() => _aiCts?.Cancel();

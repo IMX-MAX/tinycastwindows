@@ -23,6 +23,7 @@ cp -f "$WIN/src/Tinycast.Windows/Assets/tinycast.ico" "$PUBLISH/tinycast.ico"
 
 if command -v makensis >/dev/null 2>&1; then
   makensis -DSOURCE_DIR="$PUBLISH" -DOUT_DIR="$DIST" "$WIN/installer/tinycast.nsi"
+  (cd "$DIST" && sha256sum TinycastSetup.exe > TinycastSetup.exe.sha256)
   echo "Installer: $DIST/TinycastSetup.exe"
 else
   echo "makensis not found — published files are in $PUBLISH"

@@ -8,6 +8,9 @@ static class SelectedTextCapture
     public static async Task<string?> CaptureAsync(IClipboard? clipboard)
     {
         if (!OperatingSystem.IsWindows() || clipboard is null) return null;
+        NativeMethods.GetWindowThreadProcessId(
+            NativeMethods.GetForegroundWindow(), out var foregroundProcessId);
+        if (foregroundProcessId == (uint)Environment.ProcessId) return null;
         NativeMethods.OleGetClipboard(out ComDataObject? snapshot);
         var sequence = NativeMethods.GetClipboardSequenceNumber();
         try

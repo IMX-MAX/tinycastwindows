@@ -20,6 +20,9 @@ Select **AI Chat** in the palette, or open **☰ → AI · Mistral**. Turn on **
 key from `https://console.mistral.ai`, and choose a model. The key stays encrypted for the current
 Windows user through DPAPI.
 
+Quick Actions use the same encrypted key but require their own explicit switch under
+**Settings → Quick Actions**. Their model can be chosen independently from AI Chat.
+
 ## What works
 
 App launcher (Start Menu `.lnk`), clipboard history, calculator, notes, snippets, quicklinks,
