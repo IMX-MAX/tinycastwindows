@@ -66,7 +66,7 @@ website/.source/
 # Windows port (Avalonia / NSIS)
 windows/**/bin/
 windows/**/obj/
-windows/dist/
+windows/dist/publish/
 
 # Real Raycast exports carry the author's clipboard history; the harness builds its own fixtures.
 *.rayconfig
