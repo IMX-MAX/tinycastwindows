@@ -25,6 +25,11 @@ volume, recycle bin, dark mode, Task Manager, …), emoji picker, global hotkey,
 Raycast extensions, Apple Shortcuts, EventKit calendar, Continuity Camera, Stage Manager, Spaces,
 Hyper Key / hidutil, Accessibility menu search, on-device Foundation Models.
 
+## Download
+
+[`windows/dist/TinycastSetup.exe`](dist/TinycastSetup.exe) is the NSIS installer (Windows 10/11,
+64-bit). SHA-256: [`TinycastSetup.exe.sha256`](dist/TinycastSetup.exe.sha256).
+
 ## Build the installer
 
 From a machine with the .NET 8 SDK (cross-compilation from Linux or macOS is supported):
