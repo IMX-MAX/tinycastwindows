@@ -91,13 +91,39 @@ public partial class SettingsWindow : Window
         Pane.Children.Add(prompt);
     }
 
-    void ShowQuickActions(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    void ShowQuickActionsClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        ShowQuickActionsPane();
+
+    public void ShowQuickActionsPane()
     {
         Pane.Children.Clear();
         Pane.Children.Add(Heading("Quick Actions"));
         Pane.Children.Add(Hint(
             "Select text in any app, summon Tinycast, then choose Quick Actions. " +
             "The original clipboard is restored before Mistral runs."));
+        var enabled = Check(
+            "Enable Quick Actions", _core.Settings.QuickActionsEnabled,
+            value =>
+            {
+                _core.Settings.QuickActionsEnabled = value;
+                _core.Persist();
+            });
+        Pane.Children.Add(enabled);
+        Pane.Children.Add(Label("Quick Actions model"));
+        var models = new ComboBox
+        {
+            ItemsSource = MistralClient.Models,
+            SelectedItem = _core.Settings.QuickActionModel
+        };
+        models.SelectionChanged += (_, _) =>
+        {
+            if (models.SelectedItem is string model)
+            {
+                _core.Settings.QuickActionModel = model;
+                _core.Persist();
+            }
+        };
+        Pane.Children.Add(models);
         foreach (var action in _core.Settings.QuickActions.ToList())
             Pane.Children.Add(QuickActionRow(action));
         var add = new Button { Content = "Add Quick Action", Classes = { "Frost" } };
@@ -109,7 +135,7 @@ public partial class SettingsWindow : Window
                 Instruction = "Transform this text. Return only the result."
             });
             _core.Persist();
-            ShowQuickActions(null, null!);
+            ShowQuickActionsPane();
         };
         Pane.Children.Add(add);
     }
@@ -141,7 +167,7 @@ public partial class SettingsWindow : Window
         {
             _core.Settings.QuickActions.Remove(action);
             _core.Persist();
-            ShowQuickActions(null, null!);
+            ShowQuickActionsPane();
         };
         box.Children.Add(name);
         box.Children.Add(instruction);

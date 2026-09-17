@@ -30,6 +30,8 @@ public partial class App : Application
             core.HideRequested += () => Dispatcher.UIThread.Post(() => _palette.Dismiss());
             core.SettingsRequested += () => Dispatcher.UIThread.Post(ShowSettings);
             core.AiSettingsRequested += () => Dispatcher.UIThread.Post(ShowAiSettings);
+            core.QuickActionSettingsRequested += () =>
+                Dispatcher.UIThread.Post(ShowQuickActionSettings);
             core.BackupSettingsRequested += () => Dispatcher.UIThread.Post(ShowBackupSettings);
             core.NoteRequested += note => Dispatcher.UIThread.Post(() => new NoteWindow(core, note).Show());
             core.HudRequested += message => Dispatcher.UIThread.Post(() => _palette.ShowHud(message));
@@ -85,6 +87,12 @@ public partial class App : Application
     {
         ShowSettings();
         _settings?.ShowAiPane();
+    }
+
+    void ShowQuickActionSettings()
+    {
+        ShowSettings();
+        _settings?.ShowQuickActionsPane();
     }
 
     void ShowBackupSettings()
