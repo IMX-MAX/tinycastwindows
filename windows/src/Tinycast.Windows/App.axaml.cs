@@ -29,6 +29,7 @@ public partial class App : Application
             core.PaletteRequested += () => Dispatcher.UIThread.Post(() => _palette.Toggle());
             core.HideRequested += () => Dispatcher.UIThread.Post(() => _palette.Dismiss());
             core.SettingsRequested += () => Dispatcher.UIThread.Post(ShowSettings);
+            core.AiSettingsRequested += () => Dispatcher.UIThread.Post(ShowAiSettings);
             core.NoteRequested += note => Dispatcher.UIThread.Post(() => new NoteWindow(core, note).Show());
             core.HudRequested += message => Dispatcher.UIThread.Post(() => _palette.ShowHud(message));
             core.ConfirmRequested += id => Dispatcher.UIThread.Post(() => _palette.AskConfirm(id));
@@ -75,6 +76,12 @@ public partial class App : Application
         }
         _settings = new SettingsWindow(AppCore.Shared);
         _settings.Show();
+    }
+
+    void ShowAiSettings()
+    {
+        ShowSettings();
+        _settings?.ShowAiPane();
     }
 
 }

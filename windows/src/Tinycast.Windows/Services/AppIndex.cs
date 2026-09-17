@@ -35,7 +35,8 @@ sealed class AppIndex
                     Subtitle: "Application",
                     Kind: EntryKind.App,
                     Path: file,
-                    Glyph: "▣"));
+                    Glyph: "▣",
+                    IconPath: WindowsIconCache.IconPath(file)));
             }
         }
 

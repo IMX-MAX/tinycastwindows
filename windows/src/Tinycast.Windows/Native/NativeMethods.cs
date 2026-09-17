@@ -98,6 +98,12 @@ static class NativeMethods
     [DllImport("user32.dll")] public static extern nint MonitorFromWindow(nint hwnd, uint dwFlags);
     [DllImport("user32.dll")] public static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
     [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(nint hwnd, int attr, ref int attrValue, int attrSize);
+    [DllImport("gdi32.dll")] public static extern nint CreateRoundRectRgn(
+        int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
+    [DllImport("gdi32.dll")] public static extern bool DeleteObject(nint hObject);
+    [DllImport("user32.dll")] public static extern int SetWindowRgn(
+        nint hWnd, nint hRgn, bool redraw);
+    [DllImport("user32.dll")] public static extern uint GetDpiForWindow(nint hWnd);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     public static extern int SHEmptyRecycleBin(nint hwnd, string? pszRootPath, uint dwFlags);
     [DllImport("powrprof.dll")] public static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);

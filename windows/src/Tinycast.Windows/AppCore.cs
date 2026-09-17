@@ -49,6 +49,7 @@ public sealed class AppCore : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? PaletteRequested;
     public event Action? SettingsRequested;
+    public event Action? AiSettingsRequested;
     public event Action<Note>? NoteRequested;
     public event Action? HideRequested;
     public event Action<string>? ConfirmRequested;
@@ -141,10 +142,7 @@ public sealed class AppCore : INotifyPropertyChanged
         }
         pool.AddRange(Apps.Apps);
         foreach (var command in BuiltInCommands.All)
-        {
-            if (command.Kind == EntryKind.AiChat && !Settings.AiEnabled) continue;
             pool.Add(command);
-        }
         pool.AddRange(SystemActionCatalog.All.Select(a =>
             new PaletteEntry("sys:" + a.Id, a.Name, "System", EntryKind.SystemAction, Glyph: a.Glyph, Payload: a)));
         pool.AddRange(Quicklinks.Select(ToEntry));
@@ -267,6 +265,13 @@ public sealed class AppCore : INotifyPropertyChanged
 
     async Task RunCommandAsync(string id, Avalonia.Input.Platform.IClipboard? clipboard)
     {
+        if (!Settings.AiEnabled && (id == "cmd:ai" || id.StartsWith("cmd:qa-", StringComparison.Ordinal)))
+        {
+            HidePalette();
+            AiSettingsRequested?.Invoke();
+            return;
+        }
+
         switch (id)
         {
             case "cmd:settings":

@@ -41,11 +41,13 @@ public partial class PaletteWindow : Window
         {
             if (IsVisible && !Confirm.IsVisible) Dismiss();
         };
+        SizeChanged += (_, _) => AcrylicSurface.ClipRounded(this, 26);
     }
 
     void OnOpened(object? sender, EventArgs e)
     {
         AcrylicSurface.Apply(this, windowBackdrop: false);
+        AcrylicSurface.ClipRounded(this, 26);
         SearchBox.Focus();
     }
 

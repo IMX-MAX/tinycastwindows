@@ -52,7 +52,9 @@ public partial class SettingsWindow : Window
         Pane.Children.Add(Hint("Examples: Alt+Space, Ctrl+Shift+K, Win+F12. Restart Tinycast after changing it."));
     }
 
-    void ShowAi(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    void ShowAiClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => ShowAiPane();
+
+    public void ShowAiPane()
     {
         Pane.Children.Clear();
         Pane.Children.Add(Heading("AI · Mistral"));

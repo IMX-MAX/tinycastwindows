@@ -47,8 +47,13 @@
             <Grid ColumnDefinitions="30,*,Auto" Height="30">
               <Border Width="22" Height="22" CornerRadius="6" Background="#12FFFFFF"
                       VerticalAlignment="Center">
-                <TextBlock Text="{Binding Glyph}" FontSize="14"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Grid>
+                  <TextBlock Text="{Binding Glyph}" FontSize="14"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                             IsVisible="{Binding HasIcon, Converter={x:Static local:InverseBooleanConverter.Instance}}" />
+                  <Image Source="{Binding IconPath, Converter={x:Static local:AppIconConverter.Instance}}"
+                         Width="20" Height="20" Stretch="Uniform" />
+                </Grid>
               </Border>
               <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#E6FFFFFF"
                          FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
