@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Tinycast.Windows.NoteWindow"
+        Title="Note"
+        Width="440" Height="280"
+        MinWidth="360" MinHeight="180"
+        TransparencyLevelHint="AcrylicBlur,Blur"
+        Background="Transparent"
+        ExtendClientAreaToDecorationsHint="True"
+        SystemDecorations="BorderOnly">
+  <ExperimentalAcrylicBorder CornerRadius="16">
+    <ExperimentalAcrylicBorder.Material>
+      <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                   TintColor="Black"
+                                   TintOpacity="0.45"
+                                   MaterialOpacity="0.7" />
+    </ExperimentalAcrylicBorder.Material>
+    <DockPanel Margin="16,36,16,12">
+      <TextBox Name="TitleBox" DockPanel.Dock="Top" Classes="Search" FontSize="18" Watermark="Title" />
+      <TextBox Name="BodyBox" AcceptsReturn="True" TextWrapping="Wrap"
+               Background="Transparent" BorderThickness="0"
+               Foreground="#E6FFFFFF" CaretBrush="White" />
+    </DockPanel>
+  </ExperimentalAcrylicBorder>
+</Window>

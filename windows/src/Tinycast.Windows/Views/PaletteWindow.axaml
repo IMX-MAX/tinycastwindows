@@ -1,0 +1,100 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Tinycast.Windows"
+        x:Class="Tinycast.Windows.PaletteWindow"
+        x:DataType="local:AppCore"
+        Title="Tinycast"
+        Width="750" Height="475"
+        CanResize="False"
+        SystemDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        TransparencyLevelHint="AcrylicBlur,Blur,Transparent"
+        Background="Transparent"
+        WindowStartupLocation="CenterScreen"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ShowActivated="True">
+  <ExperimentalAcrylicBorder CornerRadius="26" Material="{DynamicResource PaletteAcrylic}">
+    <Grid RowDefinitions="56,*,52">
+      <Grid Grid.Row="0" Margin="18,12,18,0" ColumnDefinitions="Auto,*,Auto">
+        <TextBlock VerticalAlignment="Center" FontSize="18" Margin="0,0,10,0"
+                   Text="{Binding Mode, Converter={x:Static local:ModeGlyph.Instance}}" />
+        <TextBox Grid.Column="1" Classes="Search" Watermark="Search…"
+                 Text="{Binding Query}"
+                 Name="SearchBox"
+                 IsVisible="{Binding Mode, Converter={x:Static local:NotAiConverter.Instance}}" />
+        <TextBox Grid.Column="1" Classes="Search" Watermark="Ask Mistral…"
+                 Text="{Binding AiDraft}"
+                 Name="AiBox"
+                 IsVisible="{Binding Mode, Converter={x:Static local:IsAiConverter.Instance}}" />
+        <Button Grid.Column="2" Classes="Frost" Content="Esc" Click="OnBack" />
+      </Grid>
+
+      <ListBox Grid.Row="1" Name="ResultList"
+               ItemsSource="{Binding Results}"
+               SelectedIndex="{Binding SelectedIndex}"
+               Background="Transparent"
+               BorderThickness="0"
+               IsVisible="{Binding Mode, Converter={x:Static local:NotAiConverter.Instance}}"
+               DoubleTapped="OnActivate">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="local:PaletteEntry">
+            <Grid ColumnDefinitions="32,*">
+              <TextBlock Text="{Binding Glyph}" FontSize="18" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="1">
+                <TextBlock Text="{Binding Title}" Foreground="#E6FFFFFF" FontSize="14" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Subtitle}" Foreground="#73FFFFFF" FontSize="12" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <ScrollViewer Grid.Row="1" IsVisible="{Binding Mode, Converter={x:Static local:IsAiConverter.Instance}}"
+                    Margin="18,0">
+        <ItemsControl ItemsSource="{Binding Chat}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:ChatMessage">
+              <Border Margin="0,8" Padding="12,10" CornerRadius="12" Background="#14FFFFFF">
+                <StackPanel>
+                  <TextBlock Text="{Binding Role}" Opacity="0.5" FontSize="11" Margin="0,0,0,4" />
+                  <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="#E6FFFFFF" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <Grid Grid.Row="2" Margin="18,0,18,12" ColumnDefinitions="*,Auto,Auto">
+        <TextBlock VerticalAlignment="Center" Foreground="#73FFFFFF" Text="{Binding Status}" />
+        <Button Grid.Column="1" Classes="Frost" Margin="8,0" Content="↵  Open" Click="OnActivate" />
+        <Button Grid.Column="2" Classes="Frost" Content="⌘K" Click="OnSettings" />
+      </Grid>
+
+      <Border Name="Hud" Grid.Row="0" Grid.RowSpan="3"
+              HorizontalAlignment="Center" VerticalAlignment="Bottom"
+              Margin="0,0,0,70" Padding="16,10" CornerRadius="16"
+              Background="#CC111111" IsVisible="False">
+        <TextBlock Name="HudText" Foreground="White" />
+      </Border>
+
+      <Border Name="Confirm" Grid.Row="0" Grid.RowSpan="3"
+              Background="#66000000" IsVisible="False">
+        <Border Width="360" Padding="22" CornerRadius="20"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="#E6111111">
+          <StackPanel Spacing="14">
+            <TextBlock Name="ConfirmTitle" FontSize="18" Foreground="White" TextWrapping="Wrap" />
+            <TextBlock Foreground="#73FFFFFF" Text="Applications with unsaved work may ask you to save." TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+              <Button Classes="Frost" Content="Cancel" Click="OnConfirmCancel" />
+              <Button Classes="Frost" Content="Confirm" Click="OnConfirmOk" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Border>
+    </Grid>
+  </ExperimentalAcrylicBorder>
+</Window>
