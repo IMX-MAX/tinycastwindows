@@ -14,6 +14,12 @@ have no equivalent on this OS.
   same key. Apple Intelligence, Codex, Claude CLI, OpenAI, Anthropic, Gemini and OpenRouter are not
   on this port.
 
+### Enable AI
+
+Select **AI Chat** in the palette, or open **☰ → AI · Mistral**. Turn on **Enable AI Chat**, paste a
+key from `https://console.mistral.ai`, and choose a model. The key stays encrypted for the current
+Windows user through DPAPI.
+
 ## What works
 
 App launcher (Start Menu `.lnk`), clipboard history, calculator, notes, snippets, quicklinks,
