@@ -373,6 +373,12 @@ public sealed class AppCore : INotifyPropertyChanged
         Notify(SystemActionRunner.Run(id));
     }
 
+    public void ShowNotice(string message)
+    {
+        Status = message;
+        HudRequested?.Invoke(message);
+    }
+
     void OpenQuicklink(Quicklink link)
     {
         var target = PlaceholderExpander.Expand(link.Target, Query, LastTarget ?? "");

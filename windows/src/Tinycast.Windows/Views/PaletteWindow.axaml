@@ -15,10 +15,15 @@
         Topmost="True"
         ShowInTaskbar="False"
         ShowActivated="True">
-  <ExperimentalAcrylicBorder CornerRadius="26" Material="{DynamicResource PaletteAcrylic}">
-    <Grid RowDefinitions="56,*,52">
-      <Grid Grid.Row="0" Margin="18,12,18,0" ColumnDefinitions="Auto,*,Auto">
-        <TextBlock VerticalAlignment="Center" FontSize="18" Margin="0,0,10,0"
+  <Border CornerRadius="26" ClipToBounds="True"
+          BorderBrush="#24FFFFFF" BorderThickness="1">
+    <ExperimentalAcrylicBorder CornerRadius="25"
+                               ClipToBounds="True"
+                               Material="{DynamicResource PaletteAcrylic}">
+      <Grid RowDefinitions="58,*,52" ClipToBounds="True">
+      <Grid Grid.Row="0" Margin="16,10,16,0" ColumnDefinitions="Auto,*">
+        <TextBlock VerticalAlignment="Center" FontSize="19" Margin="0,0,9,0"
+                   Foreground="#8AFFFFFF"
                    Text="{Binding Mode, Converter={x:Static local:ModeGlyph.Instance}}" />
         <TextBox Grid.Column="1" Classes="Search" Watermark="Search…"
                  Text="{Binding Query}"
@@ -28,7 +33,6 @@
                  Text="{Binding AiDraft}"
                  Name="AiBox"
                  IsVisible="{Binding Mode, Converter={x:Static local:IsAiConverter.Instance}}" />
-        <Button Grid.Column="2" Classes="Frost" Content="Esc" Click="OnBack" />
       </Grid>
 
       <ListBox Grid.Row="1" Name="ResultList"
@@ -40,12 +44,17 @@
                DoubleTapped="OnActivate">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="local:PaletteEntry">
-            <Grid ColumnDefinitions="32,*">
-              <TextBlock Text="{Binding Glyph}" FontSize="18" VerticalAlignment="Center" />
-              <StackPanel Grid.Column="1" Spacing="1">
-                <TextBlock Text="{Binding Title}" Foreground="#E6FFFFFF" FontSize="14" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding Subtitle}" Foreground="#73FFFFFF" FontSize="12" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
+            <Grid ColumnDefinitions="30,*,Auto" Height="30">
+              <Border Width="22" Height="22" CornerRadius="6" Background="#12FFFFFF"
+                      VerticalAlignment="Center">
+                <TextBlock Text="{Binding Glyph}" FontSize="14"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#E6FFFFFF"
+                         FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              <TextBlock Grid.Column="2" Text="{Binding Subtitle}" Foreground="#66FFFFFF"
+                         FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0"
+                         TextTrimming="CharacterEllipsis" />
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
@@ -67,10 +76,18 @@
         </ItemsControl>
       </ScrollViewer>
 
-      <Grid Grid.Row="2" Margin="18,0,18,12" ColumnDefinitions="*,Auto,Auto">
-        <TextBlock VerticalAlignment="Center" Foreground="#73FFFFFF" Text="{Binding Status}" />
-        <Button Grid.Column="1" Classes="Frost" Margin="8,0" Content="↵  Open" Click="OnActivate" />
-        <Button Grid.Column="2" Classes="Frost" Content="⌘K" Click="OnSettings" />
+      <Grid Grid.Row="2" Margin="10,2,10,10" ColumnDefinitions="Auto,*,Auto">
+        <Button Width="34" Height="34" Classes="Frost" Content="☰" Click="OnSettings"
+                Padding="0" CornerRadius="17" FontSize="14" />
+        <TextBlock Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                   Foreground="#55FFFFFF" FontSize="11" Text="{Binding Status}" />
+        <Border Grid.Column="2" CornerRadius="17" BorderBrush="#22FFFFFF"
+                BorderThickness="1" Background="#18FFFFFF" Padding="12,3">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button Classes="Frost" Padding="4,4" Content="Open  ↵" Click="OnActivate" />
+            <Button Classes="Frost" Padding="4,4" Content="Actions  Ctrl K" Click="OnSettings" />
+          </StackPanel>
+        </Border>
       </Grid>
 
       <Border Name="Hud" Grid.Row="0" Grid.RowSpan="3"
@@ -95,6 +112,7 @@
           </StackPanel>
         </Border>
       </Border>
-    </Grid>
-  </ExperimentalAcrylicBorder>
+      </Grid>
+    </ExperimentalAcrylicBorder>
+  </Border>
 </Window>

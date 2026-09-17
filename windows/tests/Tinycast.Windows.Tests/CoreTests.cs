@@ -108,6 +108,27 @@ public class PlaceholderTests
     }
 }
 
+public class HotKeyGestureTests
+{
+    [Theory]
+    [InlineData("Alt+Space", HotKeyGesture.Alt, HotKeyGesture.Space)]
+    [InlineData("Ctrl+Shift+K", HotKeyGesture.Control | HotKeyGesture.Shift, 0x4B)]
+    [InlineData("Win+F12", HotKeyGesture.Windows, 0x7B)]
+    public void Parses_supported_global_shortcuts(string text, uint modifiers, uint key)
+    {
+        Assert.True(HotKeyGesture.TryParse(text, out var gesture));
+        Assert.Equal(modifiers, gesture.Modifiers);
+        Assert.Equal(key, gesture.VirtualKey);
+    }
+
+    [Theory]
+    [InlineData("Space")]
+    [InlineData("Alt+Escape")]
+    [InlineData("Ctrl+F25")]
+    public void Rejects_invalid_global_shortcuts(string text) =>
+        Assert.False(HotKeyGesture.TryParse(text, out _));
+}
+
 public class MistralTests
 {
     [Fact]

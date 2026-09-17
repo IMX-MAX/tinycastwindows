@@ -12,6 +12,7 @@
     <Color x:Key="Brand">#863BFF</Color>
     <SolidColorBrush x:Key="InkBrush" Color="{StaticResource Ink}" />
     <SolidColorBrush x:Key="InkMutedBrush" Color="{StaticResource InkMuted}" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#66FFFFFF" />
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
@@ -19,11 +20,29 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
-      <Setter Property="FontSize" Value="22" />
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="Padding" Value="0" />
       <Setter Property="CaretBrush" Value="White" />
+      <Setter Property="SelectionBrush" Value="#66863BFF" />
+    </Style>
+    <Style Selector="TextBox.Search /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="TextBox.Search:pointerover /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBox.Search:focus /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
     </Style>
     <Style Selector="ListBoxItem">
-      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="Padding" Value="8,2" />
       <Setter Property="Margin" Value="8,1" />
       <Setter Property="CornerRadius" Value="10" />
       <Setter Property="Background" Value="Transparent" />

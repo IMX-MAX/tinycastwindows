@@ -34,9 +34,22 @@ public partial class SettingsWindow : Window
         Pane.Children.Add(clip);
         Pane.Children.Add(Label("Summon hotkey"));
         var hotkey = new TextBox { Text = _core.Settings.Hotkey, Watermark = "Alt+Space" };
-        hotkey.LostFocus += (_, _) => _core.Settings.Hotkey = hotkey.Text ?? "Alt+Space";
+        hotkey.LostFocus += (_, _) =>
+        {
+            var value = hotkey.Text ?? "";
+            if (HotKeyGesture.TryParse(value, out _))
+            {
+                _core.Settings.Hotkey = value;
+                _core.Persist();
+            }
+            else
+            {
+                hotkey.Text = _core.Settings.Hotkey;
+                _core.ShowNotice("Use a modifier plus Space, a letter, number, or F1–F24");
+            }
+        };
         Pane.Children.Add(hotkey);
-        Pane.Children.Add(Hint("Restart Tinycast after changing the hotkey so the listener rebinds."));
+        Pane.Children.Add(Hint("Examples: Alt+Space, Ctrl+Shift+K, Win+F12. Restart Tinycast after changing it."));
     }
 
     void ShowAi(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
