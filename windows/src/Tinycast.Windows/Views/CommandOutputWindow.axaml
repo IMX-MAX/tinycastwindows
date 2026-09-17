@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Tinycast.Windows.CommandOutputWindow"
+        Title="Command Output"
+        Width="760" Height="480"
+        MinWidth="520" MinHeight="320"
+        WindowStartupLocation="CenterScreen"
+        TransparencyLevelHint="Mica,AcrylicBlur,Blur"
+        Background="#F0101010">
+  <Grid Margin="20" RowDefinitions="Auto,Auto,*,Auto">
+    <TextBlock Name="NameText" FontSize="20" FontWeight="SemiBold" />
+    <TextBlock Name="CommandText" Grid.Row="1" Margin="0,4,0,12"
+               Foreground="#66FFFFFF" FontFamily="Cascadia Mono,Consolas"
+               TextTrimming="CharacterEllipsis" />
+    <TextBox Name="OutputText" Grid.Row="2" IsReadOnly="True" AcceptsReturn="True"
+             TextWrapping="NoWrap" FontFamily="Cascadia Mono,Consolas"
+             Background="#80000000" BorderThickness="0" Padding="12" />
+    <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="*,Auto">
+      <TextBlock Name="StatusText" VerticalAlignment="Center" Foreground="#88FFFFFF" />
+      <Button Grid.Column="1" Classes="Frost" Content="Copy" Click="CopyOutput" />
+    </Grid>
+  </Grid>
+</Window>

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 
 namespace Tinycast.Windows;
 
@@ -34,12 +35,27 @@ public partial class SettingsWindow : Window
         Pane.Children.Add(clip);
         Pane.Children.Add(Label("Summon hotkey"));
         var hotkey = new TextBox { Text = _core.Settings.Hotkey, Watermark = "Alt+Space" };
-        hotkey.LostFocus += (_, _) => _core.Settings.Hotkey = hotkey.Text ?? "Alt+Space";
+        hotkey.LostFocus += (_, _) =>
+        {
+            var value = hotkey.Text ?? "";
+            if (HotKeyGesture.TryParse(value, out _))
+            {
+                _core.Settings.Hotkey = value;
+                _core.Persist();
+            }
+            else
+            {
+                hotkey.Text = _core.Settings.Hotkey;
+                _core.ShowNotice("Use a modifier plus Space, a letter, number, or F1–F24");
+            }
+        };
         Pane.Children.Add(hotkey);
-        Pane.Children.Add(Hint("Restart Tinycast after changing the hotkey so the listener rebinds."));
+        Pane.Children.Add(Hint("Examples: Alt+Space, Ctrl+Shift+K, Win+F12. Restart Tinycast after changing it."));
     }
 
-    void ShowAi(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    void ShowAiClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => ShowAiPane();
+
+    public void ShowAiPane()
     {
         Pane.Children.Clear();
         Pane.Children.Add(Heading("AI · Mistral"));
@@ -73,6 +89,137 @@ public partial class SettingsWindow : Window
         var prompt = new TextBox { Text = _core.Settings.SystemPrompt, AcceptsReturn = true, Height = 120, TextWrapping = TextWrapping.Wrap };
         prompt.LostFocus += (_, _) => _core.Settings.SystemPrompt = prompt.Text ?? "";
         Pane.Children.Add(prompt);
+    }
+
+    void ShowQuickActions(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Pane.Children.Clear();
+        Pane.Children.Add(Heading("Quick Actions"));
+        Pane.Children.Add(Hint(
+            "Select text in any app, summon Tinycast, then choose Quick Actions. " +
+            "The original clipboard is restored before Mistral runs."));
+        foreach (var action in _core.Settings.QuickActions.ToList())
+            Pane.Children.Add(QuickActionRow(action));
+        var add = new Button { Content = "Add Quick Action", Classes = { "Frost" } };
+        add.Click += (_, _) =>
+        {
+            _core.Settings.QuickActions.Add(new QuickActionDefinition
+            {
+                Name = "New Action",
+                Instruction = "Transform this text. Return only the result."
+            });
+            _core.Persist();
+            ShowQuickActions(null, null!);
+        };
+        Pane.Children.Add(add);
+    }
+
+    Control QuickActionRow(QuickActionDefinition action)
+    {
+        var box = new StackPanel { Spacing = 6 };
+        var name = new TextBox { Text = action.Name, Watermark = "Name" };
+        var instruction = new TextBox
+        {
+            Text = action.Instruction,
+            AcceptsReturn = true,
+            Height = 72,
+            TextWrapping = TextWrapping.Wrap,
+            Watermark = "Instruction sent before the selected text"
+        };
+        name.LostFocus += (_, _) =>
+        {
+            action.Name = name.Text ?? "";
+            _core.Persist();
+        };
+        instruction.LostFocus += (_, _) =>
+        {
+            action.Instruction = instruction.Text ?? "";
+            _core.Persist();
+        };
+        var remove = new Button { Content = "Remove", Classes = { "Frost" } };
+        remove.Click += (_, _) =>
+        {
+            _core.Settings.QuickActions.Remove(action);
+            _core.Persist();
+            ShowQuickActions(null, null!);
+        };
+        box.Children.Add(name);
+        box.Children.Add(instruction);
+        box.Children.Add(remove);
+        return box;
+    }
+
+    void ShowCustomCommands(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Pane.Children.Clear();
+        Pane.Children.Add(Heading("Custom Commands"));
+        Pane.Children.Add(Hint(
+            "Runs through cmd.exe without a terminal. The selected text is available in " +
+            "%TINYCAST_SELECTION%. Imported commands never run automatically."));
+        foreach (var command in _core.Settings.CustomCommands.ToList())
+            Pane.Children.Add(CustomCommandRow(command));
+        var add = new Button { Content = "Add Command", Classes = { "Frost" } };
+        add.Click += (_, _) =>
+        {
+            _core.Settings.CustomCommands.Add(new CustomCommand
+            {
+                Name = "New Command",
+                Command = "echo Hello from Tinycast"
+            });
+            _core.Persist();
+            ShowCustomCommands(null, null!);
+        };
+        Pane.Children.Add(add);
+    }
+
+    Control CustomCommandRow(CustomCommand command)
+    {
+        var box = new StackPanel { Spacing = 6 };
+        var name = new TextBox { Text = command.Name, Watermark = "Name" };
+        var shell = new TextBox
+        {
+            Text = command.Command,
+            AcceptsReturn = true,
+            Height = 64,
+            FontFamily = new FontFamily("Cascadia Mono,Consolas"),
+            Watermark = "Command"
+        };
+        var folder = new TextBox
+        {
+            Text = command.WorkingDirectory,
+            Watermark = "Working directory (optional)"
+        };
+        var enabled = Check("Enabled", command.Enabled, value => command.Enabled = value);
+        var confirm = Check(
+            "Confirm before running", command.ConfirmBeforeRunning,
+            value => command.ConfirmBeforeRunning = value);
+        var output = Check(
+            "Show output", command.ShowOutput, value => command.ShowOutput = value);
+        name.LostFocus += (_, _) => { command.Name = name.Text ?? ""; _core.Persist(); };
+        shell.LostFocus += (_, _) => { command.Command = shell.Text ?? ""; _core.Persist(); };
+        folder.LostFocus += (_, _) =>
+        {
+            command.WorkingDirectory = folder.Text ?? "";
+            _core.Persist();
+        };
+        enabled.IsCheckedChanged += (_, _) => _core.Persist();
+        confirm.IsCheckedChanged += (_, _) => _core.Persist();
+        output.IsCheckedChanged += (_, _) => _core.Persist();
+        var remove = new Button { Content = "Remove", Classes = { "Frost" } };
+        remove.Click += (_, _) =>
+        {
+            _core.Settings.CustomCommands.Remove(command);
+            _core.Persist();
+            ShowCustomCommands(null, null!);
+        };
+        box.Children.Add(name);
+        box.Children.Add(shell);
+        box.Children.Add(folder);
+        box.Children.Add(enabled);
+        box.Children.Add(confirm);
+        box.Children.Add(output);
+        box.Children.Add(remove);
+        return box;
     }
 
     void ShowQuicklinks(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -173,6 +320,69 @@ public partial class SettingsWindow : Window
             _core.Persist();
         };
         Pane.Children.Add(roots);
+    }
+
+    void ShowBackupClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        ShowBackupPane();
+
+    public void ShowBackupPane()
+    {
+        Pane.Children.Clear();
+        Pane.Children.Add(Heading("Backup & Restore"));
+        Pane.Children.Add(Hint(
+            "Exports settings, Quick Actions, commands, quicklinks, snippets, notes, " +
+            "clipboard history, calculator history, and launcher learning. " +
+            "Mistral keys and capability switches never leave this PC."));
+        var export = new Button { Content = "Export .tinycast Backup", Classes = { "Frost" } };
+        export.Click += async (_, _) =>
+        {
+            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Export Tinycast Backup",
+                SuggestedFileName = $"Tinycast-{DateTime.Now:yyyy-MM-dd}.tinycast",
+                FileTypeChoices =
+                [
+                    new FilePickerFileType("Tinycast Backup") { Patterns = ["*.tinycast"] }
+                ]
+            });
+            var path = file?.TryGetLocalPath();
+            if (path is null) return;
+            try
+            {
+                BackupService.Export(path, _core);
+                _core.ShowNotice("Backup exported");
+            }
+            catch (Exception ex)
+            {
+                _core.ShowNotice(ex.Message);
+            }
+        };
+        var import = new Button { Content = "Import .tinycast Backup", Classes = { "Frost" } };
+        import.Click += async (_, _) =>
+        {
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Import Tinycast Backup",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("Tinycast Backup") { Patterns = ["*.tinycast"] }
+                ]
+            });
+            var path = files.FirstOrDefault()?.TryGetLocalPath();
+            if (path is null) return;
+            try
+            {
+                BackupService.Import(path, _core);
+                _core.ShowNotice("Backup imported — capability switches stayed unchanged");
+            }
+            catch (Exception ex)
+            {
+                _core.ShowNotice(ex.Message);
+            }
+        };
+        Pane.Children.Add(export);
+        Pane.Children.Add(import);
     }
 
     static TextBlock Heading(string text) => new() { Text = text, FontSize = 24, Margin = new(0, 0, 0, 4) };

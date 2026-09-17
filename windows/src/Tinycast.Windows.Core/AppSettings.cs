@@ -16,6 +16,59 @@ public sealed class AppSettings
     public Dictionary<string, int> Ranking { get; set; } = new(StringComparer.Ordinal);
     public bool ClipboardEnabled { get; set; } = true;
     public int ClipboardLimit { get; set; } = 200;
+    public List<QuickActionDefinition> QuickActions { get; set; } = QuickActionDefinition.Defaults();
+    public List<CalculatorHistoryEntry> CalculatorHistory { get; set; } = [];
+    public List<CustomCommand> CustomCommands { get; set; } = [];
+}
+
+public sealed class QuickActionDefinition
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("n");
+    public string Name { get; set; } = "";
+    public string Instruction { get; set; } = "";
+    public string Glyph { get; set; } = "✦";
+
+    public static List<QuickActionDefinition> Defaults() =>
+    [
+        new() { Id = "fix", Name = "Fix Grammar", Glyph = "✓", Instruction = "Fix grammar and spelling. Preserve meaning and formatting. Return only the corrected text." },
+        new() { Id = "rewrite", Name = "Rewrite Clearly", Glyph = "↻", Instruction = "Rewrite this more clearly and naturally. Preserve meaning. Return only the rewritten text." },
+        new() { Id = "shorter", Name = "Make Shorter", Glyph = "−", Instruction = "Make this substantially shorter while preserving the important information. Return only the result." },
+        new() { Id = "longer", Name = "Make Longer", Glyph = "+", Instruction = "Expand this with useful detail while preserving its tone and meaning. Return only the result." },
+        new() { Id = "tone-professional", Name = "Professional Tone", Glyph = "◇", Instruction = "Rewrite this in a polished professional tone. Return only the result." },
+        new() { Id = "tone-friendly", Name = "Friendly Tone", Glyph = "☺", Instruction = "Rewrite this in a warm, friendly tone. Return only the result." },
+        new() { Id = "summarize", Name = "Summarize", Glyph = "≡", Instruction = "Summarize this concisely. Return only the summary." },
+        new() { Id = "translate", Name = "Translate to English", Glyph = "文", Instruction = "Translate this into natural English. Return only the translation." },
+    ];
+}
+
+public sealed class CalculatorHistoryEntry
+{
+    public string Expression { get; set; } = "";
+    public string Display { get; set; } = "";
+    public string CopyText { get; set; } = "";
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+public sealed class CustomCommand
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("n");
+    public string Name { get; set; } = "";
+    public string Command { get; set; } = "";
+    public bool ConfirmBeforeRunning { get; set; } = true;
+    public bool Enabled { get; set; } = true;
+    public bool ShowOutput { get; set; }
+    public string WorkingDirectory { get; set; } = "";
+
+    public CustomCommand SafeImportedCopy() => new()
+    {
+        Id = Id,
+        Name = Name,
+        Command = Command,
+        WorkingDirectory = WorkingDirectory,
+        ShowOutput = ShowOutput,
+        ConfirmBeforeRunning = true,
+        Enabled = false
+    };
 }
 
 public sealed class Quicklink
@@ -80,6 +133,21 @@ public static class PlaceholderExpander
             .Replace("{date}", now.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase)
             .Replace("{time}", now.ToString("HH:mm"), StringComparison.OrdinalIgnoreCase)
             .Replace("{datetime}", now.ToString("yyyy-MM-dd HH:mm"), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static string ExpandUrl(string template, string query = "", string clipboard = "")
+    {
+        var now = DateTime.Now;
+        return template
+            .Replace("{query}", Uri.EscapeDataString(query), StringComparison.OrdinalIgnoreCase)
+            .Replace(
+                "{clipboard}", Uri.EscapeDataString(clipboard),
+                StringComparison.OrdinalIgnoreCase)
+            .Replace("{date}", now.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase)
+            .Replace("{time}", Uri.EscapeDataString(now.ToString("HH:mm")), StringComparison.OrdinalIgnoreCase)
+            .Replace(
+                "{datetime}", Uri.EscapeDataString(now.ToString("yyyy-MM-dd HH:mm")),
+                StringComparison.OrdinalIgnoreCase);
     }
 }
 

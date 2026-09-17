@@ -29,13 +29,23 @@ public partial class App : Application
             core.PaletteRequested += () => Dispatcher.UIThread.Post(() => _palette.Toggle());
             core.HideRequested += () => Dispatcher.UIThread.Post(() => _palette.Dismiss());
             core.SettingsRequested += () => Dispatcher.UIThread.Post(ShowSettings);
+            core.AiSettingsRequested += () => Dispatcher.UIThread.Post(ShowAiSettings);
+            core.BackupSettingsRequested += () => Dispatcher.UIThread.Post(ShowBackupSettings);
             core.NoteRequested += note => Dispatcher.UIThread.Post(() => new NoteWindow(core, note).Show());
             core.HudRequested += message => Dispatcher.UIThread.Post(() => _palette.ShowHud(message));
             core.ConfirmRequested += id => Dispatcher.UIThread.Post(() => _palette.AskConfirm(id));
+            core.CommandOutputRequested += result => Dispatcher.UIThread.Post(
+                () => new CommandOutputWindow(result).Show());
 
             _hotkeys = new HotKeyListener();
-            ParseHotkey(core.Settings.Hotkey, out var mods, out var vk);
+            var gesture = HotKeyGesture.TryParse(core.Settings.Hotkey, out var saved)
+                ? saved
+                : new HotKeyGesture(HotKeyGesture.Alt, HotKeyGesture.Space);
             _hotkeys.Pressed += () => Dispatcher.UIThread.Post(core.TogglePalette);
+            _hotkeys.RegistrationFailed += () => Dispatcher.UIThread.Post(() =>
+            {
+                core.ShowNotice($"{core.Settings.Hotkey} is already used by another app");
+            });
             _hotkeys.ClipboardChanged += () => Dispatcher.UIThread.Post(async () =>
             {
                 try
@@ -45,7 +55,7 @@ public partial class App : Application
                 }
                 catch { /* clipboard can be locked by another process */ }
             });
-            _hotkeys.Start(mods, vk);
+            _hotkeys.Start(gesture.Modifiers, gesture.VirtualKey);
 
             desktop.ShutdownRequested += (_, _) =>
             {
@@ -71,24 +81,18 @@ public partial class App : Application
         _settings.Show();
     }
 
-    static void ParseHotkey(string hotkey, out uint mods, out uint vk)
+    void ShowAiSettings()
     {
-        mods = NativeMethods.ModAlt;
-        vk = NativeMethods.VkSpace;
-        var parts = hotkey.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        uint parsed = 0;
-        foreach (var part in parts)
-        {
-            if (part.Equals("Alt", StringComparison.OrdinalIgnoreCase)) parsed |= NativeMethods.ModAlt;
-            else if (part.Equals("Ctrl", StringComparison.OrdinalIgnoreCase) || part.Equals("Control", StringComparison.OrdinalIgnoreCase))
-                parsed |= NativeMethods.ModControl;
-            else if (part.Equals("Shift", StringComparison.OrdinalIgnoreCase)) parsed |= NativeMethods.ModShift;
-            else if (part.Equals("Win", StringComparison.OrdinalIgnoreCase) || part.Equals("Windows", StringComparison.OrdinalIgnoreCase))
-                parsed |= NativeMethods.ModWin;
-            else if (part.Equals("Space", StringComparison.OrdinalIgnoreCase)) vk = NativeMethods.VkSpace;
-        }
-        if (parsed != 0) mods = parsed;
+        ShowSettings();
+        _settings?.ShowAiPane();
     }
+
+    void ShowBackupSettings()
+    {
+        ShowSettings();
+        _settings?.ShowBackupPane();
+    }
+
 }
 
 public sealed class TrayCommands(AppCore core)

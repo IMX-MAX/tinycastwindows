@@ -15,6 +15,8 @@ public sealed class AppCore : INotifyPropertyChanged
     readonly JsonStore<List<ClipboardItem>> _clipboardStore = new(AppPaths.Clipboard);
     readonly MistralClient _mistral = new();
     readonly FileSearchService _files = new();
+    readonly CurrencyRateService _currencyService = new();
+    CurrencyRateSnapshot _currencyRates = new();
     CancellationTokenSource? _aiCts;
 
     public AppSettings Settings { get; private set; } = new();
@@ -45,14 +47,23 @@ public sealed class AppCore : INotifyPropertyChanged
     bool _streaming;
 
     public string? LastTarget { get; set; }
+    public string QuickActionInput { get => _quickActionInput; set => Set(ref _quickActionInput, value); }
+    string _quickActionInput = "";
+    public string QuickActionOutput { get => _quickActionOutput; set => Set(ref _quickActionOutput, value); }
+    string _quickActionOutput = "";
+    QuickActionDefinition? _activeQuickAction;
+    PaletteEntry? _actionTarget;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? PaletteRequested;
     public event Action? SettingsRequested;
+    public event Action? AiSettingsRequested;
+    public event Action? BackupSettingsRequested;
     public event Action<Note>? NoteRequested;
     public event Action? HideRequested;
     public event Action<string>? ConfirmRequested;
     public event Action<string>? HudRequested;
+    public event Action<CommandRunResult>? CommandOutputRequested;
 
     public void Start()
     {
@@ -61,6 +72,7 @@ public sealed class AppCore : INotifyPropertyChanged
         Snippets = _snippetsStore.Load();
         Notes = _notesStore.Load();
         ClipboardItems = _clipboardStore.Load();
+        _currencyRates = _currencyService.LoadCached();
         if (Settings.FileSearchRoots.Count == 0)
         {
             var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -76,6 +88,7 @@ public sealed class AppCore : INotifyPropertyChanged
         Apps.Refresh();
         StartupService.Apply(Settings.LaunchAtLogin);
         RefreshResults();
+        _ = RefreshCurrencyRatesAsync();
     }
 
     public void Persist()
@@ -114,6 +127,10 @@ public sealed class AppCore : INotifyPropertyChanged
             "windows" => WindowEntries(),
             "snippets" => SnippetEntries(),
             "quicklinks" => QuicklinkEntries(),
+            "quickActions" => QuickActionEntries(),
+            "quickActionResult" => [],
+            "calculatorHistory" => CalculatorHistoryEntries(),
+            "actions" => ActionEntries(),
             "ai" => [],
             _ => RootEntries()
         };
@@ -127,29 +144,38 @@ public sealed class AppCore : INotifyPropertyChanged
             "clipboard" => $"{ClipboardItems.Count} items",
             "emoji" => "Emoji",
             "files" => "Files",
+            "quickActions" => string.IsNullOrWhiteSpace(LastTarget)
+                ? "Select text in another app first"
+                : "Selected text",
+            "quickActionResult" => _activeQuickAction?.Name ?? "Quick Action",
+            "calculatorHistory" => $"{Settings.CalculatorHistory.Count} calculations",
+            "actions" => _actionTarget?.Title ?? "Actions",
             _ => Results.Count == 0 ? "No results" : $"{Results.Count} results"
         };
     }
 
     IReadOnlyList<PaletteEntry> RootEntries()
     {
-        var calc = Calculator.Evaluate(Query);
+        var calc = Calculator.Evaluate(Query, _currencyRates.Rates);
         var pool = new List<PaletteEntry>();
         if (calc is { } result && !result.IsError)
         {
-            pool.Add(new PaletteEntry("calc", result.Display, result.Expression, EntryKind.Calculator, Glyph: "=", Payload: result.CopyText));
+            pool.Add(new PaletteEntry(
+                "calc", result.Display, result.Expression,
+                EntryKind.Calculator, Glyph: "=", Payload: result));
         }
         pool.AddRange(Apps.Apps);
         foreach (var command in BuiltInCommands.All)
-        {
-            if (command.Kind == EntryKind.AiChat && !Settings.AiEnabled) continue;
             pool.Add(command);
-        }
         pool.AddRange(SystemActionCatalog.All.Select(a =>
             new PaletteEntry("sys:" + a.Id, a.Name, "System", EntryKind.SystemAction, Glyph: a.Glyph, Payload: a)));
         pool.AddRange(Quicklinks.Select(ToEntry));
         pool.AddRange(Snippets.Select(ToEntry));
         pool.AddRange(Notes.Select(ToEntry));
+        pool.AddRange(Settings.CustomCommands.Where(command => command.Enabled).Select(command =>
+            new PaletteEntry(
+                "custom:" + command.Id, command.Name, "Custom Command",
+                EntryKind.CustomCommand, Glyph: "⌘", Payload: command)));
         foreach (var id in Settings.FavoriteIds)
         {
             var found = pool.FirstOrDefault(e => e.Id == id);
@@ -180,6 +206,45 @@ public sealed class AppCore : INotifyPropertyChanged
 
     IReadOnlyList<PaletteEntry> QuicklinkEntries() =>
         PaletteSearch.Rank(Query, Quicklinks.Select(ToEntry), Settings.Ranking);
+
+    IReadOnlyList<PaletteEntry> QuickActionEntries() =>
+        PaletteSearch.Rank(Query, Settings.QuickActions.Select(action =>
+            new PaletteEntry(
+                "qa:" + action.Id, action.Name, "Mistral Quick Action",
+                EntryKind.QuickAction, Glyph: action.Glyph, Payload: action)), Settings.Ranking);
+
+    IReadOnlyList<PaletteEntry> CalculatorHistoryEntries() =>
+        PaletteSearch.Rank(Query, Settings.CalculatorHistory.Select((item, index) =>
+            new PaletteEntry(
+                "calc-history:" + index, item.Display, item.Expression,
+                EntryKind.Calculator, Glyph: "=", Payload: new CalcResult(
+                    item.Expression, item.Display, item.CopyText, false))), Settings.Ranking);
+
+    IReadOnlyList<PaletteEntry> ActionEntries()
+    {
+        if (_actionTarget is null) return [];
+        var actions = new List<PaletteEntry>
+        {
+            new("action:open", "Open", _actionTarget.Title, EntryKind.Action, Glyph: "↵")
+        };
+        if (_actionTarget.Kind is EntryKind.App or EntryKind.Favorite)
+        {
+            var favorited = Settings.FavoriteIds.Contains(_actionTarget.Id);
+            actions.Add(new PaletteEntry(
+                "action:favorite", favorited ? "Remove from Favorites" : "Add to Favorites",
+                _actionTarget.Title, EntryKind.Action, Glyph: favorited ? "☆" : "★"));
+            actions.Add(new PaletteEntry(
+                "action:uninstall", "Uninstall Application…",
+                "Open Windows Installed Apps", EntryKind.Action, Glyph: "⊘"));
+        }
+        if (_actionTarget.Kind == EntryKind.Calculator)
+        {
+            actions.Add(new PaletteEntry(
+                "action:calculator-history", "Calculator History",
+                "Recent calculations", EntryKind.Action, Glyph: "≡"));
+        }
+        return actions;
+    }
 
     static PaletteEntry ToEntry(Quicklink q) =>
         new("ql:" + q.Id, q.Name, q.Target, EntryKind.Quicklink, Glyph: "🔗", Payload: q);
@@ -254,19 +319,44 @@ public sealed class AppCore : INotifyPropertyChanged
                 OpenPath(entry.Path!);
                 break;
             case EntryKind.Calculator:
+                var calculation = (CalcResult)entry.Payload!;
+                RecordCalculation(calculation);
                 HidePalette();
-                await Paster.PasteTextAsync(clipboard, (string)entry.Payload!);
+                await Paster.PasteTextAsync(clipboard, calculation.CopyText);
                 break;
             case EntryKind.Window:
                 HidePalette();
                 if (entry.Payload is WindowCommand command) WindowManager.Apply(command);
                 else if (entry.Payload is nint hwnd) WindowManager.Focus(hwnd);
                 break;
+            case EntryKind.QuickAction:
+                await RunQuickActionAsync((QuickActionDefinition)entry.Payload!);
+                break;
+            case EntryKind.CustomCommand:
+                var custom = (CustomCommand)entry.Payload!;
+                if (custom.ConfirmBeforeRunning)
+                    ConfirmRequested?.Invoke("custom:" + custom.Id);
+                else
+                {
+                    HidePalette();
+                    await RunCustomCommandAsync(custom);
+                }
+                break;
+            case EntryKind.Action:
+                await RunEntryActionAsync(entry.Id, clipboard);
+                break;
         }
     }
 
     async Task RunCommandAsync(string id, Avalonia.Input.Platform.IClipboard? clipboard)
     {
+        if (!Settings.AiEnabled && (id == "cmd:ai" || id == "cmd:quick-actions"))
+        {
+            HidePalette();
+            AiSettingsRequested?.Invoke();
+            return;
+        }
+
         switch (id)
         {
             case "cmd:settings":
@@ -283,6 +373,18 @@ public sealed class AppCore : INotifyPropertyChanged
                 break;
             case "cmd:files":
                 Mode = "files";
+                Query = "";
+                break;
+            case "cmd:camera":
+                HidePalette();
+                OpenWindowsUri("ms-camera:");
+                break;
+            case "cmd:calendar":
+                HidePalette();
+                OpenWindowsUri("outlookcal:", "https://outlook.live.com/calendar/0/view/month");
+                break;
+            case "cmd:calculator-history":
+                Mode = "calculatorHistory";
                 Query = "";
                 break;
             case "cmd:windows":
@@ -302,17 +404,13 @@ public sealed class AppCore : INotifyPropertyChanged
                 Query = "";
                 Status = Settings.AiEnabled ? "Ask Mistral" : "Enable AI Chat in Settings";
                 break;
-            case "cmd:qa-fix":
-                await QuickActionClipboardAsync(clipboard, "Fix grammar and spelling. Return only the corrected text.");
+            case "cmd:quick-actions":
+                Mode = "quickActions";
+                Query = "";
                 break;
-            case "cmd:qa-rewrite":
-                await QuickActionClipboardAsync(clipboard, "Rewrite this more clearly. Return only the rewritten text.");
-                break;
-            case "cmd:qa-summarize":
-                await QuickActionClipboardAsync(clipboard, "Summarize this concisely. Return only the summary.");
-                break;
-            case "cmd:qa-translate":
-                await QuickActionClipboardAsync(clipboard, "Translate this into English. Return only the translation.");
+            case "cmd:backup":
+                HidePalette();
+                BackupSettingsRequested?.Invoke();
                 break;
             case "cmd:notes":
                 HidePalette();
@@ -329,25 +427,94 @@ public sealed class AppCore : INotifyPropertyChanged
         }
     }
 
-    async Task QuickActionClipboardAsync(Avalonia.Input.Platform.IClipboard? clipboard, string instruction)
+    async Task RunQuickActionAsync(QuickActionDefinition action)
     {
         var text = LastTarget;
-        if (string.IsNullOrWhiteSpace(text) && clipboard is not null)
-            text = await clipboard.GetTextAsync();
         if (string.IsNullOrWhiteSpace(text))
         {
-            Notify("Clipboard is empty");
+            Notify("Select text in another app before opening Tinycast");
             return;
         }
-        HidePalette();
+
+        _activeQuickAction = action;
+        QuickActionInput = text;
+        QuickActionOutput = "";
+        Mode = "quickActionResult";
+        Status = "Mistral is writing…";
+        IsStreaming = true;
         try
         {
-            var result = await QuickActionAsync(instruction, text);
-            await Paster.PasteTextAsync(clipboard, result);
+            QuickActionOutput = await QuickActionAsync(action.Instruction, text);
+            Status = action.Name;
         }
         catch (Exception ex)
         {
-            Notify(ex.Message);
+            QuickActionOutput = ex.Message;
+            Status = "Quick Action failed";
+        }
+        finally
+        {
+            IsStreaming = false;
+        }
+    }
+
+    public async Task CopyQuickActionAsync(Avalonia.Input.Platform.IClipboard? clipboard)
+    {
+        if (clipboard is null || string.IsNullOrWhiteSpace(QuickActionOutput)) return;
+        await clipboard.SetTextAsync(QuickActionOutput);
+        ShowNotice("Copied result");
+    }
+
+    public async Task ReplaceQuickActionAsync(Avalonia.Input.Platform.IClipboard? clipboard)
+    {
+        if (string.IsNullOrWhiteSpace(QuickActionOutput)) return;
+        HidePalette();
+        await Paster.PasteTextAsync(clipboard, QuickActionOutput);
+    }
+
+    public async Task RetryQuickActionAsync()
+    {
+        if (_activeQuickAction is not null)
+            await RunQuickActionAsync(_activeQuickAction);
+    }
+
+    public void ShowActions()
+    {
+        if (Mode == "actions")
+        {
+            Back();
+            return;
+        }
+        _actionTarget = Selected;
+        if (_actionTarget is null) return;
+        Mode = "actions";
+        Query = "";
+    }
+
+    async Task RunEntryActionAsync(
+        string actionId, Avalonia.Input.Platform.IClipboard? clipboard)
+    {
+        var target = _actionTarget;
+        if (target is null) return;
+        switch (actionId)
+        {
+            case "action:open":
+                await ActivateEntryAsync(target, clipboard);
+                break;
+            case "action:favorite":
+                if (!Settings.FavoriteIds.Remove(target.Id))
+                    Settings.FavoriteIds.Add(target.Id);
+                Persist();
+                Mode = "root";
+                break;
+            case "action:uninstall":
+                HidePalette();
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                    "ms-settings:appsfeatures") { UseShellExecute = true });
+                break;
+            case "action:calculator-history":
+                Mode = "calculatorHistory";
+                break;
         }
     }
 
@@ -368,14 +535,70 @@ public sealed class AppCore : INotifyPropertyChanged
         Persist();
     }
 
+    void RecordCalculation(CalcResult result)
+    {
+        Settings.CalculatorHistory.RemoveAll(item =>
+            item.Expression == result.Expression && item.CopyText == result.CopyText);
+        Settings.CalculatorHistory.Insert(0, new CalculatorHistoryEntry
+        {
+            Expression = result.Expression,
+            Display = result.Display,
+            CopyText = result.CopyText
+        });
+        if (Settings.CalculatorHistory.Count > 100)
+            Settings.CalculatorHistory.RemoveRange(
+                100, Settings.CalculatorHistory.Count - 100);
+        Persist();
+    }
+
     public void ConfirmAction(string id)
     {
+        if (id.StartsWith("custom:", StringComparison.Ordinal))
+        {
+            var command = Settings.CustomCommands.FirstOrDefault(
+                item => item.Id == id["custom:".Length..] && item.Enabled);
+            if (command is not null) _ = RunCustomCommandAsync(command);
+            return;
+        }
         Notify(SystemActionRunner.Run(id));
+    }
+
+    public string ConfirmationTitle(string id)
+    {
+        if (id.StartsWith("custom:", StringComparison.Ordinal))
+        {
+            var command = Settings.CustomCommands.FirstOrDefault(
+                item => item.Id == id["custom:".Length..]);
+            return command is null ? "Run command?" : $"Run {command.Name}?";
+        }
+        return id.Replace('-', ' ') + "?";
+    }
+
+    async Task RunCustomCommandAsync(CustomCommand command)
+    {
+        try
+        {
+            var result = await CustomCommandRunner.RunAsync(command, LastTarget ?? "");
+            if (command.ShowOutput || result.ExitCode != 0)
+                CommandOutputRequested?.Invoke(result);
+            else
+                ShowNotice($"{command.Name} finished");
+        }
+        catch (Exception ex)
+        {
+            ShowNotice(ex.Message);
+        }
+    }
+
+    public void ShowNotice(string message)
+    {
+        Status = message;
+        HudRequested?.Invoke(message);
     }
 
     void OpenQuicklink(Quicklink link)
     {
-        var target = PlaceholderExpander.Expand(link.Target, Query, LastTarget ?? "");
+        var target = PlaceholderExpander.ExpandUrl(link.Target, Query, LastTarget ?? "");
         try
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(target) { UseShellExecute = true });
@@ -389,6 +612,20 @@ public sealed class AppCore : INotifyPropertyChanged
     static void OpenPath(string path)
     {
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+    }
+
+    static void OpenWindowsUri(string primary, string? fallback = null)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(primary) { UseShellExecute = true });
+        }
+        catch when (fallback is not null)
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(fallback) { UseShellExecute = true });
+        }
     }
 
     public async Task SendChatAsync()
@@ -438,6 +675,19 @@ public sealed class AppCore : INotifyPropertyChanged
     }
 
     public void StopChat() => _aiCts?.Cancel();
+
+    async Task RefreshCurrencyRatesAsync()
+    {
+        try
+        {
+            _currencyRates = await _currencyService.RefreshAsync();
+            RefreshResults();
+        }
+        catch
+        {
+            // The last successful snapshot remains the only offline source.
+        }
+    }
 
     public void Back()
     {

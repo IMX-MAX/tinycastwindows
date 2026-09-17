@@ -15,22 +15,48 @@ public static class Calculator
     {
         ["m"] = ("length", 1), ["meter"] = ("length", 1), ["meters"] = ("length", 1),
         ["km"] = ("length", 1000), ["cm"] = ("length", 0.01), ["mm"] = ("length", 0.001),
+        ["um"] = ("length", 0.000001), ["nm"] = ("length", 0.000000001),
         ["mi"] = ("length", 1609.344), ["mile"] = ("length", 1609.344),
         ["ft"] = ("length", 0.3048), ["in"] = ("length", 0.0254), ["yd"] = ("length", 0.9144),
         ["kg"] = ("mass", 1), ["g"] = ("mass", 0.001), ["lb"] = ("mass", 0.45359237),
-        ["oz"] = ("mass", 0.028349523125),
+        ["oz"] = ("mass", 0.028349523125), ["mg"] = ("mass", 0.000001),
+        ["ton"] = ("mass", 1000), ["stone"] = ("mass", 6.35029318),
         ["c"] = ("temp", 0), ["f"] = ("temp", 0), ["k"] = ("temp", 0),
-        ["l"] = ("vol", 1), ["ml"] = ("vol", 0.001), ["gal"] = ("vol", 3.785411784),
+        ["l"] = ("volume", 1), ["ml"] = ("volume", 0.001), ["cl"] = ("volume", 0.01),
+        ["gal"] = ("volume", 3.785411784), ["qt"] = ("volume", 0.946352946),
+        ["pt"] = ("volume", 0.473176473), ["cup"] = ("volume", 0.2365882365),
+        ["tbsp"] = ("volume", 0.0147867648), ["tsp"] = ("volume", 0.00492892159),
+        ["m2"] = ("area", 1), ["km2"] = ("area", 1_000_000), ["cm2"] = ("area", 0.0001),
+        ["ft2"] = ("area", 0.09290304), ["in2"] = ("area", 0.00064516),
+        ["acre"] = ("area", 4046.8564224), ["ha"] = ("area", 10_000),
+        ["mps"] = ("speed", 1), ["kph"] = ("speed", 0.2777777778),
+        ["mph"] = ("speed", 0.44704), ["knot"] = ("speed", 0.5144444444),
+        ["s"] = ("time", 1), ["sec"] = ("time", 1), ["min"] = ("time", 60),
+        ["hr"] = ("time", 3600), ["hour"] = ("time", 3600), ["day"] = ("time", 86400),
+        ["week"] = ("time", 604800), ["ms"] = ("time", 0.001),
+        ["b"] = ("data", 1), ["kb"] = ("data", 1000), ["mb"] = ("data", 1_000_000),
+        ["gb"] = ("data", 1_000_000_000), ["tb"] = ("data", 1_000_000_000_000),
+        ["kib"] = ("data", 1024), ["mib"] = ("data", 1_048_576),
+        ["gib"] = ("data", 1_073_741_824),
+        ["j"] = ("energy", 1), ["kj"] = ("energy", 1000), ["cal"] = ("energy", 4.184),
+        ["kcal"] = ("energy", 4184), ["wh"] = ("energy", 3600), ["kwh"] = ("energy", 3_600_000),
+        ["deg"] = ("angle", Math.PI / 180), ["rad"] = ("angle", 1),
         ["px"] = ("px", 1),
     };
 
-    public static CalcResult? Evaluate(string raw, IReadOnlyDictionary<string, double>? usdRates = null)
+    public static CalcResult? Evaluate(
+        string raw,
+        IReadOnlyDictionary<string, double>? usdRates = null,
+        DateTimeOffset? now = null)
     {
         var query = raw.Trim();
         if (query.Length is 0 or > 256) return null;
+        if (TryDateTime(query, now ?? DateTimeOffset.Now, out var dateTime)) return dateTime;
         if (query.All(char.IsLetter)) return null;
 
+        if (TryBaseConversion(query, out var baseConversion)) return baseConversion;
         if (TryRadix(query, out var radix)) return radix;
+        if (TryPercent(query, out var percent)) return percent;
         if (TryConversion(query, usdRates, out var converted)) return converted;
 
         if (!LooksLikeMath(query)) return null;
@@ -72,9 +98,123 @@ public static class Calculator
         return false;
     }
 
-    static readonly Regex Conversion = new(
-        @"^\s*([+-]?(?:\d+\.?\d*|\.\d+))\s*([a-zA-Z]{1,8})\s+(?:to|in)\s+([a-zA-Z]{1,8})\s*$",
+    static readonly Regex BaseConversion = new(
+        @"^\s*(0x[0-9a-f]+|0b[01]+|\d+)\s+(?:to|in)\s+(hex|binary|bin|octal|oct|decimal|dec)\s*$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    static bool TryBaseConversion(string query, out CalcResult result)
+    {
+        result = default;
+        var match = BaseConversion.Match(query);
+        if (!match.Success) return false;
+        var source = match.Groups[1].Value;
+        long value;
+        try
+        {
+            value = source.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                ? Convert.ToInt64(source[2..], 16)
+                : source.StartsWith("0b", StringComparison.OrdinalIgnoreCase)
+                    ? Convert.ToInt64(source[2..], 2)
+                    : Convert.ToInt64(source, 10);
+        }
+        catch
+        {
+            return false;
+        }
+
+        var target = match.Groups[2].Value.ToLowerInvariant();
+        var copy = target switch
+        {
+            "hex" => "0x" + Convert.ToString(value, 16),
+            "binary" or "bin" => "0b" + Convert.ToString(value, 2),
+            "octal" or "oct" => "0o" + Convert.ToString(value, 8),
+            _ => value.ToString(CultureInfo.InvariantCulture)
+        };
+        result = new CalcResult(query, copy, copy, false);
+        return true;
+    }
+
+    static readonly Regex DateOffset = new(
+        @"^\s*(today|now)\s*([+-])\s*(\d+)\s*(minute|hour|day|week)s?\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    static bool TryDateTime(string query, DateTimeOffset now, out CalcResult result)
+    {
+        result = default;
+        if (query.Equals("now", StringComparison.OrdinalIgnoreCase))
+        {
+            var text = now.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.CurrentCulture);
+            result = new CalcResult(query, text, text, false);
+            return true;
+        }
+        if (query.Equals("today", StringComparison.OrdinalIgnoreCase))
+        {
+            var text = now.ToString("dddd, MMMM d, yyyy", CultureInfo.CurrentCulture);
+            result = new CalcResult(query, text, now.ToString("yyyy-MM-dd"), false);
+            return true;
+        }
+
+        var match = DateOffset.Match(query);
+        if (!match.Success) return false;
+        var value = int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture);
+        if (match.Groups[2].Value == "-") value = -value;
+        var shifted = match.Groups[4].Value.ToLowerInvariant() switch
+        {
+            "minute" => now.AddMinutes(value),
+            "hour" => now.AddHours(value),
+            "day" => now.AddDays(value),
+            "week" => now.AddDays(value * 7),
+            _ => now
+        };
+        if (match.Groups[1].Value.Equals("today", StringComparison.OrdinalIgnoreCase))
+            shifted = new DateTimeOffset(shifted.Date, shifted.Offset);
+        var display = shifted.ToString(
+            match.Groups[4].Value.StartsWith("minute", StringComparison.OrdinalIgnoreCase)
+            || match.Groups[4].Value.StartsWith("hour", StringComparison.OrdinalIgnoreCase)
+                ? "ddd, MMM d, yyyy HH:mm"
+                : "dddd, MMMM d, yyyy",
+            CultureInfo.CurrentCulture);
+        result = new CalcResult(query, display, shifted.ToString("yyyy-MM-dd HH:mm"), false);
+        return true;
+    }
+
+    static readonly Regex Conversion = new(
+        @"^\s*([+-]?(?:\d+\.?\d*|\.\d+))\s*([a-zA-Z0-9]{1,8})\s+(?:to|in)\s+([a-zA-Z0-9]{1,8})\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    static readonly Regex PercentOf = new(
+        @"^\s*([+-]?(?:\d+\.?\d*|\.\d+))\s*%\s*(?:of|\*)\s*([+-]?(?:\d+\.?\d*|\.\d+))\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    static readonly Regex PercentChange = new(
+        @"^\s*([+-]?(?:\d+\.?\d*|\.\d+))\s*([+-])\s*([+-]?(?:\d+\.?\d*|\.\d+))\s*%\s*$",
+        RegexOptions.Compiled);
+
+    static bool TryPercent(string query, out CalcResult result)
+    {
+        result = default;
+        var of = PercentOf.Match(query);
+        if (of.Success)
+        {
+            var percent = double.Parse(of.Groups[1].Value, CultureInfo.InvariantCulture);
+            var value = double.Parse(of.Groups[2].Value, CultureInfo.InvariantCulture);
+            var answer = value * percent / 100;
+            var copy = Format(answer);
+            result = new CalcResult(query, Group(copy), copy, false);
+            return true;
+        }
+
+        var change = PercentChange.Match(query);
+        if (!change.Success) return false;
+        var source = double.Parse(change.Groups[1].Value, CultureInfo.InvariantCulture);
+        var delta = double.Parse(change.Groups[3].Value, CultureInfo.InvariantCulture) / 100;
+        var answerChange = change.Groups[2].Value == "+"
+            ? source * (1 + delta)
+            : source * (1 - delta);
+        var changeCopy = Format(answerChange);
+        result = new CalcResult(query, Group(changeCopy), changeCopy, false);
+        return true;
+    }
 
     static bool TryConversion(string query, IReadOnlyDictionary<string, double>? usdRates, out CalcResult result)
     {
@@ -189,6 +329,33 @@ public static class Calculator
                 var inner = ParseExpr();
                 if (i < expr.Length && expr[i] == ')') i++;
                 return inner;
+            }
+            if (i < expr.Length && char.IsLetter(expr[i]))
+            {
+                var nameStart = i;
+                while (i < expr.Length && char.IsLetter(expr[i])) i++;
+                var name = expr[nameStart..i].ToLowerInvariant();
+                if (name == "pi") return Math.PI;
+                if (name == "e") return Math.E;
+                if (i >= expr.Length || expr[i] != '(') throw new FormatException();
+                i++;
+                var argument = ParseExpr();
+                if (i >= expr.Length || expr[i] != ')') throw new FormatException();
+                i++;
+                return name switch
+                {
+                    "sqrt" => Math.Sqrt(argument),
+                    "abs" => Math.Abs(argument),
+                    "sin" => Math.Sin(argument),
+                    "cos" => Math.Cos(argument),
+                    "tan" => Math.Tan(argument),
+                    "ln" => Math.Log(argument),
+                    "log" => Math.Log10(argument),
+                    "round" => Math.Round(argument),
+                    "floor" => Math.Floor(argument),
+                    "ceil" => Math.Ceiling(argument),
+                    _ => throw new FormatException()
+                };
             }
             var start = i;
             while (i < expr.Length && (char.IsDigit(expr[i]) || expr[i] == '.')) i++;

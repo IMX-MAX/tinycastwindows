@@ -91,6 +91,7 @@ static class NativeMethods
     [DllImport("user32.dll")] public static extern nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong);
     [DllImport("user32.dll")] public static extern bool AddClipboardFormatListener(nint hwnd);
     [DllImport("user32.dll")] public static extern bool RemoveClipboardFormatListener(nint hwnd);
+    [DllImport("user32.dll")] public static extern uint GetClipboardSequenceNumber();
     [DllImport("user32.dll")] public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
     [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, nuint dwExtraInfo);
     [DllImport("user32.dll")] public static extern bool LockWorkStation();
@@ -98,9 +99,20 @@ static class NativeMethods
     [DllImport("user32.dll")] public static extern nint MonitorFromWindow(nint hwnd, uint dwFlags);
     [DllImport("user32.dll")] public static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
     [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(nint hwnd, int attr, ref int attrValue, int attrSize);
+    [DllImport("gdi32.dll")] public static extern nint CreateRoundRectRgn(
+        int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
+    [DllImport("gdi32.dll")] public static extern bool DeleteObject(nint hObject);
+    [DllImport("user32.dll")] public static extern int SetWindowRgn(
+        nint hWnd, nint hRgn, bool redraw);
+    [DllImport("user32.dll")] public static extern uint GetDpiForWindow(nint hWnd);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     public static extern int SHEmptyRecycleBin(nint hwnd, string? pszRootPath, uint dwFlags);
     [DllImport("powrprof.dll")] public static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
+    [DllImport("ole32.dll")] public static extern int OleGetClipboard(
+        out System.Runtime.InteropServices.ComTypes.IDataObject? dataObject);
+    [DllImport("ole32.dll")] public static extern int OleSetClipboard(
+        System.Runtime.InteropServices.ComTypes.IDataObject? dataObject);
+    [DllImport("ole32.dll")] public static extern int OleFlushClipboard();
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
     public struct MONITORINFO

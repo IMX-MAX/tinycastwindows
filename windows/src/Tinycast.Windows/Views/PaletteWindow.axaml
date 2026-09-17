@@ -15,20 +15,27 @@
         Topmost="True"
         ShowInTaskbar="False"
         ShowActivated="True">
-  <ExperimentalAcrylicBorder CornerRadius="26" Material="{DynamicResource PaletteAcrylic}">
-    <Grid RowDefinitions="56,*,52">
-      <Grid Grid.Row="0" Margin="18,12,18,0" ColumnDefinitions="Auto,*,Auto">
-        <TextBlock VerticalAlignment="Center" FontSize="18" Margin="0,0,10,0"
+  <Border CornerRadius="26" ClipToBounds="True"
+          BorderBrush="#24FFFFFF" BorderThickness="1">
+    <ExperimentalAcrylicBorder CornerRadius="25"
+                               ClipToBounds="True"
+                               Material="{DynamicResource PaletteAcrylic}">
+      <Grid RowDefinitions="58,*,52" ClipToBounds="True">
+      <Grid Grid.Row="0" Margin="16,10,16,0" ColumnDefinitions="Auto,*">
+        <TextBlock VerticalAlignment="Center" FontSize="19" Margin="0,0,9,0"
+                   Foreground="#8AFFFFFF"
                    Text="{Binding Mode, Converter={x:Static local:ModeGlyph.Instance}}" />
         <TextBox Grid.Column="1" Classes="Search" Watermark="Search…"
                  Text="{Binding Query}"
                  Name="SearchBox"
-                 IsVisible="{Binding Mode, Converter={x:Static local:NotAiConverter.Instance}}" />
+                 IsVisible="{Binding Mode, Converter={x:Static local:ShowsSearchBoxConverter.Instance}}" />
         <TextBox Grid.Column="1" Classes="Search" Watermark="Ask Mistral…"
                  Text="{Binding AiDraft}"
                  Name="AiBox"
                  IsVisible="{Binding Mode, Converter={x:Static local:IsAiConverter.Instance}}" />
-        <Button Grid.Column="2" Classes="Frost" Content="Esc" Click="OnBack" />
+        <TextBlock Grid.Column="1" Text="{Binding Status}" FontSize="18"
+                   Foreground="#DFFFFFFF" VerticalAlignment="Center"
+                   IsVisible="{Binding Mode, Converter={x:Static local:IsQuickActionResultConverter.Instance}}" />
       </Grid>
 
       <ListBox Grid.Row="1" Name="ResultList"
@@ -36,16 +43,44 @@
                SelectedIndex="{Binding SelectedIndex}"
                Background="Transparent"
                BorderThickness="0"
-               IsVisible="{Binding Mode, Converter={x:Static local:NotAiConverter.Instance}}"
+               IsVisible="{Binding Mode, Converter={x:Static local:ShowsPaletteListConverter.Instance}}"
                DoubleTapped="OnActivate">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="local:PaletteEntry">
-            <Grid ColumnDefinitions="32,*">
-              <TextBlock Text="{Binding Glyph}" FontSize="18" VerticalAlignment="Center" />
-              <StackPanel Grid.Column="1" Spacing="1">
-                <TextBlock Text="{Binding Title}" Foreground="#E6FFFFFF" FontSize="14" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding Subtitle}" Foreground="#73FFFFFF" FontSize="12" TextTrimming="CharacterEllipsis" />
-              </StackPanel>
+            <Grid>
+              <Grid ColumnDefinitions="30,*,Auto" Height="30" IsVisible="{Binding IsRegular}">
+                <Border Width="22" Height="22" CornerRadius="6" Background="#12FFFFFF"
+                        VerticalAlignment="Center">
+                  <Grid>
+                    <TextBlock Text="{Binding Glyph}" FontSize="14"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding HasIcon, Converter={x:Static local:InverseBooleanConverter.Instance}}" />
+                    <Image Source="{Binding IconPath, Converter={x:Static local:AppIconConverter.Instance}}"
+                           Width="20" Height="20" Stretch="Uniform" />
+                  </Grid>
+                </Border>
+                <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#E6FFFFFF"
+                           FontSize="13" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="{Binding Subtitle}" Foreground="#66FFFFFF"
+                           FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0"
+                           TextTrimming="CharacterEllipsis" />
+              </Grid>
+              <Border IsVisible="{Binding IsCalculator}" CornerRadius="12"
+                      BorderBrush="#1FFFFFFF" BorderThickness="1"
+                      Background="#12FFFFFF" Padding="16,12" Margin="0,4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="Calculator" FontSize="10" Foreground="#66FFFFFF" />
+                    <TextBlock Text="{Binding Subtitle}" FontSize="14" Foreground="#BFFFFFFF" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" HorizontalAlignment="Right" Spacing="2">
+                    <TextBlock Text="Copy with Enter" FontSize="10" Foreground="#66FFFFFF"
+                               HorizontalAlignment="Right" />
+                    <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="SemiBold"
+                               Foreground="#F2FFFFFF" HorizontalAlignment="Right" />
+                  </StackPanel>
+                </Grid>
+              </Border>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
@@ -67,10 +102,42 @@
         </ItemsControl>
       </ScrollViewer>
 
-      <Grid Grid.Row="2" Margin="18,0,18,12" ColumnDefinitions="*,Auto,Auto">
-        <TextBlock VerticalAlignment="Center" Foreground="#73FFFFFF" Text="{Binding Status}" />
-        <Button Grid.Column="1" Classes="Frost" Margin="8,0" Content="↵  Open" Click="OnActivate" />
-        <Button Grid.Column="2" Classes="Frost" Content="⌘K" Click="OnSettings" />
+      <Grid Grid.Row="1" Margin="18,2"
+            IsVisible="{Binding Mode, Converter={x:Static local:IsQuickActionResultConverter.Instance}}"
+            ColumnDefinitions="*,1,*">
+        <Grid RowDefinitions="Auto,*" Margin="0,0,16,0">
+          <TextBlock Text="Original" Foreground="#66FFFFFF" FontSize="11" Margin="2,0,0,8" />
+          <TextBox Grid.Row="1" Text="{Binding QuickActionInput}" IsReadOnly="True"
+                   AcceptsReturn="True" TextWrapping="Wrap" Background="#0CFFFFFF"
+                   BorderThickness="0" Padding="12" CornerRadius="10" />
+        </Grid>
+        <Border Grid.Column="1" Background="#1FFFFFFF" />
+        <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto" Margin="16,0,0,0">
+          <TextBlock Text="Result" Foreground="#66FFFFFF" FontSize="11" Margin="2,0,0,8" />
+          <TextBox Grid.Row="1" Text="{Binding QuickActionOutput}" IsReadOnly="True"
+                   AcceptsReturn="True" TextWrapping="Wrap" Background="#0CFFFFFF"
+                   BorderThickness="0" Padding="12" CornerRadius="10" />
+          <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                      Spacing="8" Margin="0,8,0,0">
+            <Button Classes="Frost" Content="Retry" Click="OnQuickActionRetry" />
+            <Button Classes="Frost" Content="Copy" Click="OnQuickActionCopy" />
+            <Button Classes="Frost" Content="Replace" Click="OnQuickActionReplace" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+
+      <Grid Grid.Row="2" Margin="10,2,10,10" ColumnDefinitions="Auto,*,Auto">
+        <Button Width="34" Height="34" Classes="Frost" Content="☰" Click="OnSettings"
+                Padding="0" CornerRadius="17" FontSize="14" />
+        <TextBlock Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                   Foreground="#55FFFFFF" FontSize="11" Text="{Binding Status}" />
+        <Border Grid.Column="2" CornerRadius="17" BorderBrush="#22FFFFFF"
+                BorderThickness="1" Background="#18FFFFFF" Padding="12,3">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Button Classes="Frost" Padding="4,4" Content="Open  ↵" Click="OnActivate" />
+            <Button Classes="Frost" Padding="4,4" Content="Actions  Ctrl K" Click="OnActions" />
+          </StackPanel>
+        </Border>
       </Grid>
 
       <Border Name="Hud" Grid.Row="0" Grid.RowSpan="3"
@@ -95,6 +162,7 @@
           </StackPanel>
         </Border>
       </Border>
-    </Grid>
-  </ExperimentalAcrylicBorder>
+      </Grid>
+    </ExperimentalAcrylicBorder>
+  </Border>
 </Window>

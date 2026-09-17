@@ -14,6 +14,12 @@ have no equivalent on this OS.
   same key. Apple Intelligence, Codex, Claude CLI, OpenAI, Anthropic, Gemini and OpenRouter are not
   on this port.
 
+### Enable AI
+
+Select **AI Chat** in the palette, or open **☰ → AI · Mistral**. Turn on **Enable AI Chat**, paste a
+key from `https://console.mistral.ai`, and choose a model. The key stays encrypted for the current
+Windows user through DPAPI.
+
 ## What works
 
 App launcher (Start Menu `.lnk`), clipboard history, calculator, notes, snippets, quicklinks,
@@ -24,6 +30,11 @@ volume, recycle bin, dark mode, Task Manager, …), emoji picker, global hotkey,
 
 Raycast extensions, Apple Shortcuts, EventKit calendar, Continuity Camera, Stage Manager, Spaces,
 Hyper Key / hidutil, Accessibility menu search, on-device Foundation Models.
+
+## Download
+
+[`windows/dist/TinycastSetup.exe`](dist/TinycastSetup.exe) is the NSIS installer (Windows 10/11,
+64-bit). SHA-256: [`TinycastSetup.exe.sha256`](dist/TinycastSetup.exe.sha256).
 
 ## Build the installer
 

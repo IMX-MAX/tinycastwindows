@@ -15,8 +15,6 @@ public partial class PaletteWindow : Window
     string? _pendingAction;
     DispatcherTimer? _hudTimer;
     nint _lastForeground;
-    bool _hotkeyBound;
-    const int HotkeyId = 0x54;
 
     public PaletteWindow() : this(AppCore.Shared) { }
 
@@ -38,33 +36,19 @@ public partial class PaletteWindow : Window
             e.Cancel = true;
             Dismiss();
         };
-        KeyDown += OnKeyDown;
+        AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         Deactivated += (_, _) =>
         {
-            if (IsVisible) Dismiss();
+            if (IsVisible && !Confirm.IsVisible) Dismiss();
         };
+        SizeChanged += (_, _) => AcrylicSurface.ClipRounded(this, 26);
     }
 
     void OnOpened(object? sender, EventArgs e)
     {
-        AcrylicSurface.Apply(this);
-        BindHotkey();
+        AcrylicSurface.Apply(this, windowBackdrop: false);
+        AcrylicSurface.ClipRounded(this, 26);
         SearchBox.Focus();
-    }
-
-    void BindHotkey()
-    {
-        if (_hotkeyBound || !OperatingSystem.IsWindows()) return;
-        var handle = TryGetPlatformHandle()?.Handle ?? nint.Zero;
-        if (handle == nint.Zero) return;
-        ParseHotkey(_core.Settings.Hotkey, out var mods, out var vk);
-        NativeMethods.RegisterHotKey(handle, HotkeyId, mods | NativeMethods.ModNorepeat, vk);
-        _hotkeyBound = true;
-        Win32MessageHook.Add(this, msg =>
-        {
-            if (msg == NativeMethods.WmHotkey)
-                Dispatcher.UIThread.Post(Toggle);
-        });
     }
 
     public void Toggle()
@@ -73,11 +57,11 @@ public partial class PaletteWindow : Window
         else ShowPalette();
     }
 
-    public void ShowPalette()
+    public async void ShowPalette()
     {
         if (OperatingSystem.IsWindows())
             _lastForeground = NativeMethods.GetForegroundWindow();
-        _core.LastTarget = TryReadClipboard();
+        _core.LastTarget = await SelectedTextCapture.CaptureAsync(Clipboard);
         _core.Mode = "root";
         _core.Query = "";
         Show();
@@ -98,15 +82,6 @@ public partial class PaletteWindow : Window
             NativeMethods.SetForegroundWindow(_lastForeground);
     }
 
-    string? TryReadClipboard()
-    {
-        try
-        {
-            return Clipboard?.GetTextAsync().GetAwaiter().GetResult();
-        }
-        catch { return null; }
-    }
-
     async void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
@@ -118,6 +93,15 @@ public partial class PaletteWindow : Window
         if (e.Key == Key.Enter)
         {
             await _core.ActivateAsync(Clipboard);
+            FocusComposer();
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.Tab)
+        {
+            _core.Mode = _core.Mode == "clipboard" ? "root" : "clipboard";
+            _core.Query = "";
+            FocusComposer();
             e.Handled = true;
             return;
         }
@@ -133,20 +117,45 @@ public partial class PaletteWindow : Window
         }
         if (e.Key == Key.K && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
-            _core.OpenSettings();
+            _core.ShowActions();
+            FocusComposer();
             e.Handled = true;
+            return;
         }
         if (e.Key == Key.Back && string.IsNullOrEmpty(_core.Query) && _core.Mode != "root")
         {
             _core.Back();
+            FocusComposer();
             e.Handled = true;
         }
     }
 
-    async void OnActivate(object? sender, RoutedEventArgs e) => await _core.ActivateAsync(Clipboard);
+    async void OnActivate(object? sender, RoutedEventArgs e)
+    {
+        await _core.ActivateAsync(Clipboard);
+        FocusComposer();
+    }
 
-    void OnBack(object? sender, RoutedEventArgs e) => _core.Back();
+    void OnBack(object? sender, RoutedEventArgs e)
+    {
+        _core.Back();
+        FocusComposer();
+    }
     void OnSettings(object? sender, RoutedEventArgs e) => _core.OpenSettings();
+    void OnActions(object? sender, RoutedEventArgs e)
+    {
+        _core.ShowActions();
+        FocusComposer();
+    }
+
+    async void OnQuickActionRetry(object? sender, RoutedEventArgs e) =>
+        await _core.RetryQuickActionAsync();
+
+    async void OnQuickActionCopy(object? sender, RoutedEventArgs e) =>
+        await _core.CopyQuickActionAsync(Clipboard);
+
+    async void OnQuickActionReplace(object? sender, RoutedEventArgs e) =>
+        await _core.ReplaceQuickActionAsync(Clipboard);
 
     public void ShowHud(string message)
     {
@@ -165,7 +174,7 @@ public partial class PaletteWindow : Window
     public void AskConfirm(string id)
     {
         _pendingAction = id;
-        ConfirmTitle.Text = id.Replace('-', ' ') + "?";
+        ConfirmTitle.Text = _core.ConfirmationTitle(id);
         Confirm.IsVisible = true;
         Show();
     }
@@ -186,23 +195,11 @@ public partial class PaletteWindow : Window
         if (id is not null) _core.ConfirmAction(id);
     }
 
-    static void ParseHotkey(string hotkey, out uint mods, out uint vk)
+    void FocusComposer()
     {
-        mods = NativeMethods.ModAlt;
-        vk = NativeMethods.VkSpace;
-        var parts = hotkey.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        uint parsed = 0;
-        foreach (var part in parts)
-        {
-            if (part.Equals("Alt", StringComparison.OrdinalIgnoreCase)) parsed |= NativeMethods.ModAlt;
-            else if (part.Equals("Ctrl", StringComparison.OrdinalIgnoreCase) || part.Equals("Control", StringComparison.OrdinalIgnoreCase))
-                parsed |= NativeMethods.ModControl;
-            else if (part.Equals("Shift", StringComparison.OrdinalIgnoreCase)) parsed |= NativeMethods.ModShift;
-            else if (part.Equals("Win", StringComparison.OrdinalIgnoreCase) || part.Equals("Windows", StringComparison.OrdinalIgnoreCase))
-                parsed |= NativeMethods.ModWin;
-            else if (part.Equals("Space", StringComparison.OrdinalIgnoreCase)) vk = NativeMethods.VkSpace;
-        }
-        if (parsed != 0) mods = parsed;
+        Dispatcher.UIThread.Post(
+            () => (_core.Mode == "ai" ? AiBox : SearchBox).Focus(),
+            DispatcherPriority.Input);
     }
 }
 
@@ -218,7 +215,7 @@ public sealed class ModeGlyph : IValueConverter
         "snippets" => "✂",
         "quicklinks" => "🔗",
         "ai" => "✦",
-        _ => "◎"
+        _ => "⌕"
     };
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
 }
@@ -237,12 +234,29 @@ public sealed class NotAiConverter : IValueConverter
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
 }
 
-static class Win32MessageHook
+public sealed class ShowsPaletteListConverter : IValueConverter
 {
-    public static void Add(Window window, Action<int> onMessage)
-    {
-        // Avalonia 11: listen via the Win32 options callback when available.
-        window.GotFocus += (_, _) => { /* keep the window eligible for hotkey delivery */ };
-        _ = onMessage;
-    }
+    public static readonly ShowsPaletteListConverter Instance = new();
+    public object Convert(object? value, Type t, object? p, CultureInfo c) =>
+        value is not "ai" and not "quickActionResult";
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) =>
+        throw new NotSupportedException();
+}
+
+public sealed class ShowsSearchBoxConverter : IValueConverter
+{
+    public static readonly ShowsSearchBoxConverter Instance = new();
+    public object Convert(object? value, Type t, object? p, CultureInfo c) =>
+        value is not "ai" and not "quickActionResult";
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) =>
+        throw new NotSupportedException();
+}
+
+public sealed class IsQuickActionResultConverter : IValueConverter
+{
+    public static readonly IsQuickActionResultConverter Instance = new();
+    public object Convert(object? value, Type t, object? p, CultureInfo c) =>
+        value is "quickActionResult";
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) =>
+        throw new NotSupportedException();
 }

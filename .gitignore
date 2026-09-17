@@ -23,9 +23,9 @@ buildServer.json
 .swiftpm/
 .build/
 
-# Build output
-build/
-dist/
+# Build output (repo root only — windows/dist holds the downloadable installer)
+/build/
+/dist/
 
 # Fastlane
 fastlane/report.xml
@@ -66,7 +66,7 @@ website/.source/
 # Windows port (Avalonia / NSIS)
 windows/**/bin/
 windows/**/obj/
-windows/dist/
+windows/dist/publish/
 
 # Real Raycast exports carry the author's clipboard history; the harness builds its own fixtures.
 *.rayconfig

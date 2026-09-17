@@ -6,6 +6,7 @@ sealed class HotKeyListener : IDisposable
 {
     public event Action? Pressed;
     public event Action? ClipboardChanged;
+    public event Action? RegistrationFailed;
 
     const int WmHotkey = 0x0312;
     const int WmClipboardUpdate = 0x031D;
@@ -44,7 +45,9 @@ sealed class HotKeyListener : IDisposable
         };
         RegisterClass(ref wndClass);
         _hwnd = CreateWindowEx(0, className, "Tinycast", 0, 0, 0, 0, 0, new nint(HwndMessage), nint.Zero, wndClass.hInstance, nint.Zero);
-        NativeMethods.RegisterHotKey(_hwnd, HotkeyId, modifiers | NativeMethods.ModNorepeat, vk);
+        if (!NativeMethods.RegisterHotKey(
+                _hwnd, HotkeyId, modifiers | NativeMethods.ModNorepeat, vk))
+            RegistrationFailed?.Invoke();
         NativeMethods.AddClipboardFormatListener(_hwnd);
 
         MSG msg;
